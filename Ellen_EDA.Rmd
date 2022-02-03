@@ -1,0 +1,259 @@
+---
+title: "EDA by Ellen"
+author: "Ellen Considine"
+date: "2/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(cowplot)
+states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
+```
+```{r}
+### PM2.5 obs used in training Reid model:
+
+# Reid_obs<- readRDS("PM25_input_locations-dates.rds")
+Reid_obs<- readRDS("PM25_inputs.rds")
+Reid_obs<- Reid_obs[,c("Lat", "Lon", "PM2.5_Obs", "Year", "Date_Local", 
+               "Data_Source_Name_Display")]
+
+```
+
+
+```{r}
+### PM2.5 in our validation set (from Airsis and WRCC):
+
+setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
+validation<- readRDS("combine.rds")
+
+dim(validation) # 28997    28
+table(validation$dataset) 
+# airsis   wrcc 
+#  22899   6098 
+
+```
+
+
+```{r}
+
+## Removing overlap between the datasets:
+validation$date<- as.Date(validation$date, format = "%Y-%m-%d")
+Reid_obs$Date<- as.Date(Reid_obs$Date_Local, format = "%Y-%m-%d")
+Reid_obs$Date_Local<- NULL
+
+validation$row_id<- 1:dim(validation)[1]
+
+overlap<- inner_join(validation, Reid_obs, by = c("longitude" = "Lon",
+                                                  "latitude" = "Lat",
+                                                  "date" = "Date"))
+table(overlap$Data_Source_Name_Display)
+# CARB Mobile Monitor  Fire Cache Smoke Monitor (DRI) 
+#                  370                              9
+Table(overlap$state)
+# california      idaho     nevada     oregon washington 
+#        365          6          3          2          3
+
+v_diffs<- overlap$PM2.5 - overlap$PM2.5_Obs
+summary(v_diffs)
+overlap[which(abs(v_diffs) > 5),c("date", "PM2.5", "PM2.5_Obs", "Data_Source_Name_Display")] # 54: 22 where validation > Reid_obs, 32 where less than
+
+valid<- validation[which(!validation$row_id %in% overlap$row_id),] # 28618 obs
+
+## Note Di NA's before proceeding:
+di_na_pos<- which(is.na(valid$PM_grid)) # 17 obs
+
+summary(valid$PM2.5)
+summary(valid$PM_grid[-di_na_pos])
+summary(valid$Ens_pred)
+
+## Removing a lot of high smoke days (where the Di data is NA):
+valid<- valid[-di_na_pos,]
+
+```
+
+```{r}
+## Looking at high levels of PM2.5 as well as overall:
+
+medium<- valid[which(valid$PM2.5 >= 12),] # 7705 obs
+
+high<- valid[which(valid$PM2.5 >= 35.5),] # 1693 obs
+
+## R-squared:
+cor(valid$PM2.5, valid$PM_grid)^2
+cor(valid$PM2.5, valid$Ens_pred)^2
+
+cor(medium$PM2.5, medium$PM_grid)^2
+cor(medium$PM2.5, medium$Ens_pred)^2 # with the 17 Di NAs included, 0.1374851
+
+cor(high$PM2.5, high$PM_grid)^2
+cor(high$PM2.5, high$Ens_pred)^2 # with the 17 Di NAs included, 0.04305235
+
+## Bias:
+
+mean(valid$diff_mo_po)
+mean(valid$diff_mo_ct)
+
+mean(medium$diff_mo_po)
+mean(medium$diff_mo_ct)
+
+mean(high$diff_mo_po)
+mean(high$diff_mo_ct)
+
+```
+
+
+```{r}
+
+## Scatterplots 
+
+plot_3_combos<- function(df){
+  p1<- ggplot(df,
+              aes(x=PM2.5,y=PM_grid))+geom_point()+
+    geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
+    ylab("Di Estimates")
+  p2<- ggplot(df,
+              aes(x=PM2.5,y=Ens_pred))+geom_point()+
+    geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
+    ylab("Reid Estimates")
+  p3<- ggplot(df,
+              aes(x=Ens_pred,y=PM_grid))+geom_point()+
+    geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
+    ylab("Di Estimates")
+  
+  plot_grid(p1,p2,p3)
+}
+
+## Overall
+plot_3_combos(valid)
+
+## Medium
+plot_3_combos(medium)
+
+## High
+plot_3_combos(high)
+
+```
+```{r}
+## Look at percentiles:
+
+v_percentiles<- ecdf(valid$PM2.5)
+valid$v_perc<- v_percentiles(valid$PM2.5)
+
+d_percentiles<- ecdf(valid$PM_grid)
+valid$d_perc<- d_percentiles(valid$PM_grid)
+
+r_percentiles<- ecdf(valid$Ens_pred)
+valid$r_perc<- r_percentiles(valid$Ens_pred)
+
+## Matching on deciles of high PM2.5?
+
+sum((valid$v_perc >= 0.95)&(valid$d_perc >= 0.95))/sum(valid$v_perc >= 0.95)
+sum((valid$v_perc >= 0.95)&(valid$r_perc >= 0.95))/sum(valid$v_perc >= 0.95)
+
+sum((valid$v_perc >= 0.9)&(valid$d_perc >= 0.9))/sum(valid$v_perc >= 0.9)
+sum((valid$v_perc >= 0.9)&(valid$r_perc >= 0.9))/sum(valid$v_perc >= 0.9)
+
+sum((valid$v_perc >= 0.75)&(valid$d_perc >= 0.75))/sum(valid$v_perc >= 0.75)
+sum((valid$v_perc >= 0.75)&(valid$r_perc >= 0.75))/sum(valid$v_perc >= 0.75)
+
+## Re-run these so we include the new columns:
+
+medium<- valid[which(valid$PM2.5 >= 12),] # 7705 obs
+high<- valid[which(valid$PM2.5 >= 35.5),] # 1693 obs
+
+## R-squared for percentiles:
+
+cor(valid$v_perc, valid$d_perc)^2
+cor(valid$v_perc, valid$r_perc)^2
+
+cor(medium$v_perc, medium$d_perc)^2
+cor(medium$v_perc, medium$r_perc)^2 # with the 17 Di NAs included, 0.1374851
+
+cor(high$v_perc, high$d_perc)^2
+cor(high$v_perc, high$r_perc)^2 # with the 17 Di NAs included, 0.04305235
+
+# ## Scatterplots for percentiles:
+# 
+# plot_percs<- function(df){
+#   p1<- ggplot(df,
+#               aes(x=v_perc,y=d_perc))+geom_point()+
+#     geom_abline(intercept=0,slope=1,color='red')+
+#     ggtitle("Di vs. Monitor Percentiles") + xlab("Validation PM2.5 Percentile") +
+#     ylab("Di Estimates Percentile")
+#   p2<- ggplot(df,
+#               aes(x=v_perc,y=r_perc))+geom_point()+
+#     geom_abline(intercept=0,slope=1,color='red')+
+#     ggtitle("Reid vs. Monitor Percentiles") + xlab("Validation PM2.5 Percentile") +
+#     ylab("Reid Estimates Percentile")
+#   p3<- ggplot(df,
+#               aes(x=r_perc,y=d_perc))+geom_point()+
+#     geom_abline(intercept=0,slope=1,color='red')+
+#     ggtitle("Di vs. Reid Percentiles") + xlab("Reid Estimates Percentile") +
+#     ylab("Di Estimates Percentile")
+#   
+#   plot_grid(p1,p2,p3)
+# }
+# 
+# ## Overall
+# plot_percs(valid)
+# 
+# ## Medium
+# plot_percs(medium)
+# 
+# ## High
+# plot_percs(high)
+
+```
+```{r}
+## AQI classifications:
+
+Color<- c("Green", "Yellow", "Orange", "Red", "Purple", "Maroon")
+Conc_low<- c(0, 12, 35.5, 55.5, 150.5, 250.5)
+Conc_high<- c(11.999999, 35.499999, 55.499999, 150.499999, 250.499999, 5000)
+AQI_low<- c(0, 51, 101, 151, 201, 301)
+AQI_high<- c(50, 100, 150, 200, 300, 500)
+
+AQI_table<- data.frame(Color, Conc_low, Conc_high, AQI_low, AQI_high)
+
+
+AQI_class<- function(x){ #takes in concentration of interest
+  n_r<- which((AQI_table$Conc_low <= x)&(AQI_table$Conc_high >= x))[1]
+  # aqi<-(AQI_table$AQI_high[n_r]-AQI_table$AQI_low[n_r])/(AQI_table$Conc_high[n_r]-AQI_table$Conc_low[n_r])*(x-AQI_table$Conc_low[n_r])+AQI_table$AQI_low[n_r]
+  return(AQI_table$Color[n_r])
+}
+
+valid$v_class<- unlist(sapply(valid$PM2.5, AQI_class))
+for(col in Color){
+  print(col)
+  print(length(valid[which(valid$v_class == col), "PM2.5"]))
+  print(summary(valid[which(valid$v_class == col), "PM2.5"]))
+}
+
+valid$d_class<- unlist(sapply(valid$PM_grid, AQI_class))
+valid$r_class<- unlist(sapply(valid$Ens_pred, AQI_class))
+
+mean(valid$v_class == valid$d_class)
+mean(valid$v_class == valid$r_class)
+
+## Re-run these so we include the new columns:
+
+medium<- valid[which(valid$PM2.5 >= 12),] # 7705 obs
+high<- valid[which(valid$PM2.5 >= 35.5),] # 1693 obs
+
+mean(medium$v_class == medium$d_class)
+mean(medium$v_class == medium$r_class)
+
+mean(high$v_class == high$d_class)
+mean(high$v_class == high$r_class)
+
+```
