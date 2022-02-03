@@ -1,0 +1,684 @@
+---
+title: "Monitor_compare"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
+```
+
+#stratified analysis
+```{r}
+#point
+wrcc_point<-readRDS("/n/home02/haohaojy/monitor/portable/wrcc_compare_point.rds")
+wrcc_point<-wrcc_point[,-1]
+airsis_point<-readRDS("/n/home02/haohaojy/monitor/portable/airsis_compare_point.rds")
+airsis_point<-airsis_point[,-1]
+airsis_point1<-airsis_point[which(airsis_point$PM2.5<1000),]
+wrcc_point1<-wrcc_point[which(wrcc_point$PM2.5<1000),]
+wrcc_point1$dataset<-'wrcc'
+airsis_point1$dataset<-'airsis'
+monitor<-rbind(wrcc_point1,airsis_point1)
+
+monitor$Ens_pred<-ifelse(monitor$Ens_pred<0,0,monitor$Ens_pred)
+monitor$diff_mo_ct<-monitor$PM2.5-monitor$Ens_pred
+monitor$diff_mo_po<-monitor$PM2.5-monitor$PM_grid
+monitor$diff<-monitor$Ens_pred-monitor$PM_grid
+
+monitor$County_FIPS<-as.numeric(monitor$County_FIPS)
+monitor$County_FIPS<-sprintf("%03d",monitor$County_FIPS)
+monitor$Tract_code<-as.numeric(monitor$Tract_code)
+monitor$Tract_code<-sprintf("%06d",monitor$Tract_code)
+monitor$state_id<-as.numeric(monitor$state_id)
+monitor$state_id<-sprintf("%02d",monitor$state_id)
+monitor$GEOID<-paste0(monitor$state_id,monitor$County_FIPS,monitor$Tract_code)
+monitor$month<-months(monitor$date)
+monitor$year<-year(monitor$date)
+monitor$season<-NA
+monitor$season[which(monitor$month %in% c("March","April","May"))]<-"spring"
+monitor$season[which(monitor$month %in% c("June","July","August"))]<-"summer"
+monitor$season[which(monitor$month  %in% c("September","October","November"))]<-"autumn"
+monitor$season[which(monitor$month  %in% c("December","January","February"))]<-"winter"
+
+
+```
+
+```{r}
+summary(as.factor(monitor$stateCode))
+summary(monitor$PM2.5)
+summary(monitor$PM_grid)
+summary(monitor$Ens_pred)
+summary(monitor$diff_mo_ct)
+summary(monitor$diff_mo_po)
+summary(monitor$diff)
+```
+
+```{r}
+#Scatterplot
+ggplot(monitor,aes(x=PM2.5,y=Ens_pred))+
+  geom_point()+
+  geom_abline(intercept=0,slope=1,color='red')
+
+ggplot(monitor,aes(x=PM2.5,y=PM_grid))+
+  geom_point()+
+  geom_abline(intercept=0,slope=1,color='red')
+
+ggplot(monitor,aes(x=Ens_pred,y=PM_grid))+
+  geom_point()+
+  geom_abline(intercept=0,slope=1,color='red')
+```
+
+
+```{r}
+#Spatial RMSD
+subdata<-monitor[,c("diff_mo_ct","diff_mo_po","diff","PM2.5","Ens_pred","PM_grid","GEOID","date","month","year","state","season")]
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID,FUN=mean)
+colnames(mydata)<-c('GEOID','PM')
+sqrt((1/(nrow(mydata)))*(sum((mydata$PM)^2)))
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID,FUN=mean)
+colnames(mydata)<-c('GEOID','PM')
+sqrt((1/(nrow(mydata)))*(sum((mydata$PM)^2)))
+
+mydata<-aggregate(data=subdata,diff~GEOID,FUN=mean)
+colnames(mydata)<-c('GEOID','PM')
+sqrt((1/(nrow(mydata)))*(sum((mydata$PM)^2)))
+#Temporal RMSD
+mydata<-aggregate(data=subdata,diff_mo_ct~date,FUN=mean)
+colnames(mydata)<-c('Date','PM')
+sqrt((1/(nrow(mydata)))*(sum((mydata$PM)^2)))
+
+mydata<-aggregate(data=subdata,diff_mo_po~date,FUN=mean)
+colnames(mydata)<-c('Date','PM')
+sqrt((1/(nrow(mydata)))*(sum((mydata$PM)^2)))
+
+mydata<-aggregate(data=subdata,diff~date,FUN=mean)
+colnames(mydata)<-c('Date','PM')
+sqrt((1/(nrow(mydata)))*(sum((mydata$PM)^2)))
+#Spatial Pearson Correlation Coefficient
+a<-aggregate(data=subdata,PM2.5~GEOID,FUN=mean)
+colnames(a)=c('GEOID','mo')
+b<-aggregate(data=subdata,Ens_pred~GEOID,FUN=mean)
+colnames(b)=c('GEOID','ct')
+c<-aggregate(data=subdata,PM_grid~GEOID,FUN=mean)
+colnames(c)=c('GEOID','po')
+spatial=merge(a,b,by=c('GEOID'))
+spatial=merge(spatial,c,by=c('GEOID'))
+
+mean_mo<-mean(spatial$mo)
+mean_ct<-mean(spatial$ct)
+mean_grid<-mean(spatial$po)
+RS_ct<-(sum((spatial$mo-mean_mo)*(spatial$ct-mean_ct)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$ct-mean_ct)^2))))
+RS_ct
+RS_po<-(sum((spatial$mo-mean_mo)*(spatial$po-mean_grid)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$po-mean_grid)^2))))
+RS_po
+
+#Temporal Pearson Correlation Coefficient
+a<-aggregate(data=subdata,PM2.5~date,FUN=mean)
+colnames(a)=c('date','mo')
+b<-aggregate(data=subdata,Ens_pred~date,FUN=mean)
+colnames(b)=c('date','ct')
+c<-aggregate(data=subdata,PM_grid~date,FUN=mean)
+colnames(c)=c('date','po')
+temporal=merge(a,b,by=c('date'))
+temporal=merge(temporal,c,by=c('date'))
+
+mean_mo<-mean(temporal$mo)
+mean_ct<-mean(temporal$ct)
+mean_grid<-mean(temporal$po)
+RT_ct<-(sum((temporal$mo-mean_mo)*(temporal$ct-mean_ct)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$ct-mean_ct)^2))))
+RT_ct
+RT_po<-(sum((temporal$mo-mean_mo)*(temporal$po-mean_grid)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$po-mean_grid)^2))))
+RT_po
+
+####R^2
+summary(lm(PM2.5~Ens_pred,subdata))
+summary(lm(PM2.5~PM_grid,subdata))
+summary(lm(PM_grid~Ens_pred,subdata))
+```
+
+
+
+```{r}
+#########Spatial RMSD
+##Year
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_mo_ct_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_mo_ct_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_mo_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_mo_po_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_diff_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_diff_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+Spatial_RMSD_year1<-data.frame(c(2011:2016),spatial_RMSD_mo_ct_year)
+colnames(Spatial_RMSD_year1)=c('state','RMSD')
+Spatial_RMSD_year1$group='Reid vs Monitor'
+Spatial_RMSD_year2<-data.frame(c(2011:2016),spatial_RMSD_mo_po_year)
+colnames(Spatial_RMSD_year2)=c('state','RMSD')
+Spatial_RMSD_year2$group='Di vs Monitor'
+Spatial_RMSD_year3<-data.frame(c(2011:2016),spatial_RMSD_diff_year)
+colnames(Spatial_RMSD_year3)=c('state','RMSD')
+Spatial_RMSD_year3$group='Di vs Reid'
+
+Spatial_RMSD_year<-rbind(Spatial_RMSD_year1,Spatial_RMSD_year2,Spatial_RMSD_year3)
+colnames(Spatial_RMSD_year)<-c("year","RMSD","group")
+
+ggplot(data=Spatial_RMSD_year, aes(x=year, y=RMSD,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00','red'))+
+  ggtitle("Spatial RMSD by Year")
+
+#Season
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_mo_ct_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_mo_ct_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_mo_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_mo_po_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_diff_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_diff_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+
+Spatial_RMSD_season1<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_mo_ct_season)
+colnames(Spatial_RMSD_season1)=c('season','RMSD')
+Spatial_RMSD_season1$group='Reid vs Monitor'
+Spatial_RMSD_season2<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_mo_po_season)
+colnames(Spatial_RMSD_season2)=c('season','RMSD')
+Spatial_RMSD_season2$group='Di vs Monitor'
+Spatial_RMSD_season3<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_diff_season)
+colnames(Spatial_RMSD_season3)=c('season','RMSD')
+Spatial_RMSD_season3$group='Di vs Reid'
+
+Spatial_RMSD_season<-rbind(Spatial_RMSD_season1,Spatial_RMSD_season2,Spatial_RMSD_season3)
+colnames(Spatial_RMSD_season)<-c("season","RMSD","group")
+
+Spatial_RMSD_season$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+
+ggplot(data=Spatial_RMSD_season, aes(x=season, y=RMSD,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00','red'))+
+  ggtitle("Spatial RMSD by Season")
+
+#State
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_mo_ct_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_mo_ct_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_mo_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_mo_po_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_diff_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_diff_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+Spatial_RMSD_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_mo_ct_state)
+colnames(Spatial_RMSD_state1)=c('state','RMSD')
+Spatial_RMSD_state1$group='Reid vs Monitor'
+Spatial_RMSD_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_mo_po_state)
+colnames(Spatial_RMSD_state2)=c('state','RMSD')
+Spatial_RMSD_state2$group='Di vs Monitor'
+Spatial_RMSD_state3<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_diff_state)
+colnames(Spatial_RMSD_state3)=c('state','RMSD')
+Spatial_RMSD_state3$group='Di vs Reid'
+
+Spatial_RMSD_state<-rbind(Spatial_RMSD_state1,Spatial_RMSD_state2,Spatial_RMSD_state3)
+colnames(Spatial_RMSD_state)<-c("state","RMSD","group")
+
+ggplot(data=Spatial_RMSD_state, aes(x=state, y=RMSD,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00','red'))+
+  ggtitle("Spatial RMSD by State")
+
+```
+
+
+```{r}
+#Temporal RMSD
+##Year
+mydata<-aggregate(data=subdata,diff_mo_ct~date+year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_mo_ct_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_mo_ct_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_mo_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_mo_po_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~ date +year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_diff_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_diff_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+temporal_RMSD_year1<-data.frame(c(2011:2016),temporal_RMSD_mo_ct_year)
+colnames(temporal_RMSD_year1)=c('state','RMSD')
+temporal_RMSD_year1$group='Reid vs Monitor'
+temporal_RMSD_year2<-data.frame(c(2011:2016),temporal_RMSD_mo_po_year)
+colnames(temporal_RMSD_year2)=c('state','RMSD')
+temporal_RMSD_year2$group='Di vs Monitor'
+temporal_RMSD_year3<-data.frame(c(2011:2016),temporal_RMSD_diff_year)
+colnames(temporal_RMSD_year3)=c('state','RMSD')
+temporal_RMSD_year3$group='Di vs Reid'
+
+temporal_RMSD_year<-rbind(temporal_RMSD_year1,temporal_RMSD_year2,temporal_RMSD_year3)
+colnames(temporal_RMSD_year)<-c("year","RMSD","group")
+
+ggplot(data=temporal_RMSD_year, aes(x=year, y=RMSD,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00','red'))+
+  ggtitle("Temporal RMSD by Year")
+
+#Season
+mydata<-aggregate(data=subdata,diff_mo_ct~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_mo_ct_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_mo_ct_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_mo_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_mo_po_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_diff_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_diff_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+temporal_RMSD_season1<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_mo_ct_season)
+colnames(temporal_RMSD_season1)=c('season','RMSD')
+temporal_RMSD_season1$group='Reid vs Monitor'
+temporal_RMSD_season2<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_mo_po_season)
+colnames(temporal_RMSD_season2)=c('season','RMSD')
+temporal_RMSD_season2$group='Di vs Monitor'
+temporal_RMSD_season3<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_diff_season)
+colnames(temporal_RMSD_season3)=c('season','RMSD')
+temporal_RMSD_season3$group='Di vs Reid'
+
+temporal_RMSD_season<-rbind(temporal_RMSD_season1,temporal_RMSD_season2,temporal_RMSD_season3)
+colnames(temporal_RMSD_season)<-c("season","RMSD","group")
+
+temporal_RMSD_season$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+
+ggplot(data=temporal_RMSD_season, aes(x=season, y=RMSD,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00','red'))+
+  ggtitle("Temporal RMSD by Season")
+
+#State
+mydata<-aggregate(data=subdata,diff_mo_ct~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_mo_ct_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_mo_ct_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_mo_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_mo_po_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_diff_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_diff_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+temporal_RMSD_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_mo_ct_state)
+colnames(temporal_RMSD_state1)=c('state','RMSD')
+temporal_RMSD_state1$group='Reid vs Monitor'
+temporal_RMSD_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_mo_po_state)
+colnames(temporal_RMSD_state2)=c('state','RMSD')
+temporal_RMSD_state2$group='Di vs Monitor'
+temporal_RMSD_state3<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_diff_state)
+colnames(temporal_RMSD_state3)=c('state','RMSD')
+temporal_RMSD_state3$group='Di vs Reid'
+
+temporal_RMSD_state<-rbind(temporal_RMSD_state1,temporal_RMSD_state2,temporal_RMSD_state3)
+colnames(temporal_RMSD_state)<-c("state","RMSD","group")
+
+ggplot(data=temporal_RMSD_state, aes(x=state, y=RMSD,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00','red'))+
+  ggtitle("Temporal RMSD by State")
+
+```
+
+
+```{r}
+#Spatial Pearson Correlation Coefficient
+#year
+a<-aggregate(data=subdata,PM2.5~GEOID+year,FUN=mean)
+colnames(a)=c('GEOID','year','mo')
+b<-aggregate(data=subdata,Ens_pred~GEOID+year,FUN=mean)
+colnames(b)=c('GEOID','year','ct')
+c<-aggregate(data=subdata,PM_grid~GEOID+year,FUN=mean)
+colnames(c)=c('GEOID','year','po')
+spatial=merge(a,b,by=c('GEOID','year'))
+spatial=merge(spatial,c,by=c('GEOID','year'))
+
+RS_ct_year<-rep(NA,6)
+RS_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-spatial[which(spatial$year==i),]
+  mean_mo<-mean(data_year$mo)
+  mean_ct<-mean(data_year$ct)
+  mean_grid<-mean(data_year$po)
+  RS_ct_year[i-2010]<-(sum((data_year$mo-mean_mo)*(data_year$ct-mean_ct)))/(sqrt(sum((data_year$mo-mean_mo)^2)*(sum((data_year$ct-mean_ct)^2))))
+  RS_po_year[i-2010]<-(sum((data_year$mo-mean_mo)*(data_year$po-mean_grid)))/(sqrt(sum((data_year$mo-mean_mo)^2)*(sum((data_year$po-mean_grid)^2))))
+}
+RS_year<-data.frame(c(2011:2016),RS_ct_year, RS_po_year)
+colnames(RS_year)=c('year','Reid','Di')
+RS_year$group = 'Spatial Correlation Coefficient'
+#season
+a<-aggregate(data=subdata,PM2.5~GEOID+season,FUN=mean)
+colnames(a)=c('GEOID','season','mo')
+b<-aggregate(data=subdata,Ens_pred~GEOID+season,FUN=mean)
+colnames(b)=c('GEOID','season','ct')
+c<-aggregate(data=subdata,PM_grid~GEOID+season,FUN=mean)
+colnames(c)=c('GEOID','season','po')
+spatial=merge(a,b,by=c('GEOID','season'))
+spatial=merge(spatial,c,by=c('GEOID','season'))
+
+RS_ct_season<-rep(NA,4)
+RS_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-spatial[which(spatial$season==c("spring","summer","autumn","winter")[i]),]
+  mean_mo<-mean(data_season$mo)
+  mean_ct<-mean(data_season$ct)
+  mean_grid<-mean(data_season$po)
+  RS_ct_season[i]<-(sum((data_season$mo-mean_mo)*(data_season$ct-mean_ct)))/(sqrt(sum((data_season$mo-mean_mo)^2)*(sum((data_season$ct-mean_ct)^2))))
+  RS_po_season[i]<-(sum((data_season$mo-mean_mo)*(data_season$po-mean_grid)))/(sqrt(sum((data_season$mo-mean_mo)^2)*(sum((data_season$po-mean_grid)^2))))
+}
+RS_season<-data.frame(c("spring","summer","autumn","winter"),RS_ct_season, RS_po_season)
+colnames(RS_season)=c('season','Reid','Di')
+RS_season$group = 'Spatial Correlation Coefficient'
+#state
+a<-aggregate(data=subdata,PM2.5~GEOID+state,FUN=mean)
+colnames(a)=c('GEOID','state','mo')
+b<-aggregate(data=subdata,Ens_pred~GEOID+state,FUN=mean)
+colnames(b)=c('GEOID','state','ct')
+c<-aggregate(data=subdata,PM_grid~GEOID+state,FUN=mean)
+colnames(c)=c('GEOID','state','po')
+spatial=merge(a,b,by=c('GEOID','state'))
+spatial=merge(spatial,c,by=c('GEOID','state'))
+
+RS_ct_state<-rep(NA,10)
+RS_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-spatial[which(spatial$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  mean_mo<-mean(data_state$mo)
+  mean_ct<-mean(data_state$ct)
+  mean_grid<-mean(data_state$po)
+  RS_ct_state[i]<-(sum((data_state$mo-mean_mo)*(data_state$ct-mean_ct)))/(sqrt(sum((data_state$mo-mean_mo)^2)*(sum((data_state$ct-mean_ct)^2))))
+  RS_po_state[i]<-(sum((data_state$mo-mean_mo)*(data_state$po-mean_grid)))/(sqrt(sum((data_state$mo-mean_mo)^2)*(sum((data_state$po-mean_grid)^2))))
+}
+RS_state<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),RS_ct_state, RS_po_state)
+colnames(RS_state)=c('state','Reid','Di')
+RS_state$group = 'Spatial Correlation Coefficient'
+```
+
+```{r}
+#Temporal Pearson Correlation Coefficient
+#year
+a<-aggregate(data=subdata,PM2.5~date+year,FUN=mean)
+colnames(a)=c('date','year','mo')
+b<-aggregate(data=subdata,Ens_pred~date+year,FUN=mean)
+colnames(b)=c('date','year','ct')
+c<-aggregate(data=subdata,PM_grid~date+year,FUN=mean)
+colnames(c)=c('date','year','po')
+temporal=merge(a,b,by=c('date','year'))
+temporal=merge(temporal,c,by=c('date','year'))
+
+RT_ct_year<-rep(NA,6)
+RT_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-temporal[which(temporal$year==i),]
+  mean_mo<-mean(data_year$mo)
+  mean_ct<-mean(data_year$ct)
+  mean_grid<-mean(data_year$po)
+  RT_ct_year[i-2010]<-(sum((data_year$mo-mean_mo)*(data_year$ct-mean_ct)))/(sqrt(sum((data_year$mo-mean_mo)^2)*(sum((data_year$ct-mean_ct)^2))))
+  RT_po_year[i-2010]<-(sum((data_year$mo-mean_mo)*(data_year$po-mean_grid)))/(sqrt(sum((data_year$mo-mean_mo)^2)*(sum((data_year$po-mean_grid)^2))))
+}
+RT_year<-data.frame(c(2011:2016),RT_ct_year, RT_po_year)
+colnames(RT_year)=c('year','Reid','Di')
+RT_year$group = 'Temporal Correlation Coefficient'
+
+#season
+a<-aggregate(data=subdata,PM2.5~date+season,FUN=mean)
+colnames(a)=c('date','season','mo')
+b<-aggregate(data=subdata,Ens_pred~date+season,FUN=mean)
+colnames(b)=c('date','season','ct')
+c<-aggregate(data=subdata,PM_grid~date+season,FUN=mean)
+colnames(c)=c('date','season','po')
+temporal=merge(a,b,by=c('date','season'))
+temporal=merge(temporal,c,by=c('date','season'))
+
+RT_ct_season<-rep(NA,4)
+RT_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-temporal[which(temporal$season==c("spring","summer","autumn","winter")[i]),]
+  mean_mo<-mean(data_season$mo)
+  mean_ct<-mean(data_season$ct)
+  mean_grid<-mean(data_season$po)
+  RT_ct_season[i]<-(sum((data_season$mo-mean_mo)*(data_season$ct-mean_ct)))/(sqrt(sum((data_season$mo-mean_mo)^2)*(sum((data_season$ct-mean_ct)^2))))
+  RT_po_season[i]<-(sum((data_season$mo-mean_mo)*(data_season$po-mean_grid)))/(sqrt(sum((data_season$mo-mean_mo)^2)*(sum((data_season$po-mean_grid)^2))))
+}
+RT_season<-data.frame(c("spring","summer","autumn","winter"),RT_ct_season, RT_po_season)
+colnames(RT_season)=c('season','Reid','Di')
+RT_season$group = 'Temporal Correlation Coefficient'
+
+#state
+a<-aggregate(data=subdata,PM2.5~date+state,FUN=mean)
+colnames(a)=c('date','state','mo')
+b<-aggregate(data=subdata,Ens_pred~date+state,FUN=mean)
+colnames(b)=c('date','state','ct')
+c<-aggregate(data=subdata,PM_grid~date+state,FUN=mean)
+colnames(c)=c('date','state','po')
+temporal=merge(a,b,by=c('date','state'))
+temporal=merge(temporal,c,by=c('date','state'))
+
+RT_ct_state<-rep(NA,10)
+RT_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-temporal[which(temporal$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  mean_mo<-mean(data_state$mo)
+  mean_ct<-mean(data_state$ct)
+  mean_grid<-mean(data_state$po)
+  RT_ct_state[i]<-(sum((data_state$mo-mean_mo)*(data_state$ct-mean_ct)))/(sqrt(sum((data_state$mo-mean_mo)^2)*(sum((data_state$ct-mean_ct)^2))))
+  RT_po_state[i]<-(sum((data_state$mo-mean_mo)*(data_state$po-mean_grid)))/(sqrt(sum((data_state$mo-mean_mo)^2)*(sum((data_state$po-mean_grid)^2))))
+}
+RT_state<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),RT_ct_state, RT_po_state)
+colnames(RT_state)=c('state','Reid','Di')
+RT_state$group = 'Temporal Correlation Coefficient'
+```
+
+```{r}
+#######Spatial Correlation#######
+#Year
+RS_year1<-data.frame(c(2011:2016),RS_ct_year)
+colnames(RS_year1)<-c('year','Correlation')
+RS_year1$group='Reid'
+RS_year2<-data.frame(c(2011:2016),RS_po_year)
+colnames(RS_year2)<-c('year','Correlation')
+RS_year2$group='Di'
+RS_year<-rbind(RS_year1,RS_year2)
+spatial_pearson1<-ggplot(data=RS_year, aes(x=year, y=Correlation,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00'))+
+  ggtitle("Spatial Correlation Coefficients by Year")
+
+#Season
+RS_season1<-data.frame(c("spring","summer","autumn","winter"),RS_ct_season)
+colnames(RS_season1)<-c('season','Correlation')
+RS_season1$group='Reid'
+RS_season2<-data.frame(c("spring","summer","autumn","winter"),RS_po_season)
+colnames(RS_season2)<-c('season','Correlation')
+RS_season2$group='Di'
+RS_season<-rbind(RS_season1,RS_season2)
+RS_season$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+spatial_pearson2<-ggplot(data=RS_season, aes(x=season, y=Correlation,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00'))+
+  ggtitle("Spatial Correlation Coefficients by Season")
+
+
+#State
+RS_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),RS_ct_state)
+colnames(RS_state1)<-c('state','Correlation')
+RS_state1$group='Reid'
+RS_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),RS_po_state)
+colnames(RS_state2)<-c('state','Correlation')
+RS_state2$group='Di'
+RS_state<-rbind(RS_state1,RS_state2)
+
+spatial_pearson3<-ggplot(data=RS_state, aes(x=state, y=Correlation,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00'))+
+  ggtitle("Spatial Correlation Coefficients by State")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+
+
+spatial_pearson1
+spatial_pearson2
+spatial_pearson3
+```
+
+```{r}
+#######Temporal Correlation#######
+library(ggplot2)
+#Year
+RT_year1<-data.frame(c(2011:2016),RT_ct_year)
+colnames(RT_year1)<-c('year','Correlation')
+RT_year1$group='Reid'
+RT_year2<-data.frame(c(2011:2016),RT_po_year)
+colnames(RT_year2)<-c('year','Correlation')
+RT_year2$group='Di'
+RT_year<-rbind(RT_year1,RT_year2)
+temporal_pearson1<-ggplot(data=RT_year, aes(x=year, y=Correlation,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00'))+
+  ggtitle("Temporal Correlation Coefficients by Year")
+
+#Season
+RT_season1<-data.frame(c("spring","summer","autumn","winter"),RT_ct_season)
+colnames(RT_season1)<-c('season','Correlation')
+RT_season1$group='Reid'
+RT_season2<-data.frame(c("spring","summer","autumn","winter"),RT_po_season)
+colnames(RT_season2)<-c('season','Correlation')
+RT_season2$group='Di'
+RT_season<-rbind(RT_season1,RT_season2)
+RT_season$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+temporal_pearson2<-ggplot(data=RT_season, aes(x=season, y=Correlation,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00'))+
+  ggtitle("Temporal Correlation Coefficients by Season")
+
+
+#State
+RT_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),RT_ct_state)
+colnames(RT_state1)<-c('state','Correlation')
+RT_state1$group='Reid'
+RT_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),RT_po_state)
+colnames(RT_state2)<-c('state','Correlation')
+RT_state2$group='Di'
+RT_state<-rbind(RT_state1,RT_state2)
+
+temporal_pearson3<-ggplot(data=RT_state, aes(x=state, y=Correlation,group=group,color=group))+
+  geom_point(aes(color=group,shape=group))+
+  geom_line(aes(color=group))+
+  scale_color_manual(values=c('cyan2','#E69F00'))+
+  ggtitle("Temporal Correlation Coefficients by State")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+
+
+temporal_pearson1
+temporal_pearson2
+temporal_pearson3
+```
+
