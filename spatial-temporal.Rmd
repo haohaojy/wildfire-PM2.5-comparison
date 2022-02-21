@@ -1,0 +1,1321 @@
+---
+title: "Spatial-Temporal"
+author: "Jiayuan Hao"
+date: "2/21/2022"
+output: html_document
+---
+---
+title: "EDA"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+medium<- valid[which(valid$PM2.5 >= 12.1),] 
+high<- valid[which(valid$PM2.5 >= 35.5),]
+```
+
+
+```{r}
+#########Spatial RMSD
+##Year
+subdata<-valid
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_mo_ct_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_mo_ct_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_mo_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_mo_po_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+
+mydata<-aggregate(data=subdata,diff~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_diff_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_diff_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+Spatial_RMSD_year1<-data.frame(c(2011:2016),spatial_RMSD_mo_ct_year)
+colnames(Spatial_RMSD_year1)=c('state','RMSD')
+Spatial_RMSD_year1$group='Reid vs Monitor'
+
+Spatial_RMSD_year2<-data.frame(c(2011:2016),spatial_RMSD_mo_po_year)
+colnames(Spatial_RMSD_year2)=c('state','RMSD')
+Spatial_RMSD_year2$group='Di vs Monitor'
+Spatial_RMSD_year3<-data.frame(c(2011:2016),spatial_RMSD_diff_year)
+colnames(Spatial_RMSD_year3)=c('state','RMSD')
+Spatial_RMSD_year3$group='Di vs Reid'
+
+Spatial_RMSD_year<-rbind(Spatial_RMSD_year1,Spatial_RMSD_year2,Spatial_RMSD_year3)
+colnames(Spatial_RMSD_year)<-c("year","RMSD","group")
+Spatial_RMSD_year$data<-'overall'
+
+#Season
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_mo_ct_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_mo_ct_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_mo_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_mo_po_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_diff_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_diff_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+
+Spatial_RMSD_season1<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_mo_ct_season)
+colnames(Spatial_RMSD_season1)=c('season','RMSD')
+Spatial_RMSD_season1$group='Reid vs Monitor'
+Spatial_RMSD_season2<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_mo_po_season)
+colnames(Spatial_RMSD_season2)=c('season','RMSD')
+Spatial_RMSD_season2$group='Di vs Monitor'
+Spatial_RMSD_season3<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_diff_season)
+colnames(Spatial_RMSD_season3)=c('season','RMSD')
+Spatial_RMSD_season3$group='Di vs Reid'
+
+Spatial_RMSD_season<-rbind(Spatial_RMSD_season1,Spatial_RMSD_season2,Spatial_RMSD_season3)
+colnames(Spatial_RMSD_season)<-c("season","RMSD","group")
+
+Spatial_RMSD_season$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+Spatial_RMSD_season$data<-'overall'
+
+#State
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_mo_ct_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_mo_ct_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_mo_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_mo_po_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_diff_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_diff_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+Spatial_RMSD_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_mo_ct_state)
+colnames(Spatial_RMSD_state1)=c('state','RMSD')
+Spatial_RMSD_state1$group='Reid vs Monitor'
+Spatial_RMSD_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_mo_po_state)
+colnames(Spatial_RMSD_state2)=c('state','RMSD')
+Spatial_RMSD_state2$group='Di vs Monitor'
+Spatial_RMSD_state3<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_diff_state)
+colnames(Spatial_RMSD_state3)=c('state','RMSD')
+Spatial_RMSD_state3$group='Di vs Reid'
+
+Spatial_RMSD_state<-rbind(Spatial_RMSD_state1,Spatial_RMSD_state2,Spatial_RMSD_state3)
+colnames(Spatial_RMSD_state)<-c("state","RMSD","group")
+
+Spatial_RMSD_state$data<-'overall'
+```
+
+```{r}
+#########Spatial RMSD
+##Year
+subdata<-medium
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_mo_ct_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_mo_ct_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_mo_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_mo_po_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+
+mydata<-aggregate(data=subdata,diff~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_diff_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_diff_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+Spatial_RMSD_year1<-data.frame(c(2011:2016),spatial_RMSD_mo_ct_year)
+colnames(Spatial_RMSD_year1)=c('state','RMSD')
+Spatial_RMSD_year1$group='Reid vs Monitor'
+
+Spatial_RMSD_year2<-data.frame(c(2011:2016),spatial_RMSD_mo_po_year)
+colnames(Spatial_RMSD_year2)=c('state','RMSD')
+Spatial_RMSD_year2$group='Di vs Monitor'
+Spatial_RMSD_year3<-data.frame(c(2011:2016),spatial_RMSD_diff_year)
+colnames(Spatial_RMSD_year3)=c('state','RMSD')
+Spatial_RMSD_year3$group='Di vs Reid'
+
+Spatial_RMSD_year_medium<-rbind(Spatial_RMSD_year1,Spatial_RMSD_year2,Spatial_RMSD_year3)
+colnames(Spatial_RMSD_year_medium)<-c("year","RMSD","group")
+Spatial_RMSD_year_medium$data<-'medium'
+
+#Season
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_mo_ct_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_mo_ct_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_mo_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_mo_po_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_diff_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_diff_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+
+Spatial_RMSD_season1<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_mo_ct_season)
+colnames(Spatial_RMSD_season1)=c('season','RMSD')
+Spatial_RMSD_season1$group='Reid vs Monitor'
+Spatial_RMSD_season2<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_mo_po_season)
+colnames(Spatial_RMSD_season2)=c('season','RMSD')
+Spatial_RMSD_season2$group='Di vs Monitor'
+Spatial_RMSD_season3<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_diff_season)
+colnames(Spatial_RMSD_season3)=c('season','RMSD')
+Spatial_RMSD_season3$group='Di vs Reid'
+
+Spatial_RMSD_season_medium<-rbind(Spatial_RMSD_season1,Spatial_RMSD_season2,Spatial_RMSD_season3)
+colnames(Spatial_RMSD_season_medium)<-c("season","RMSD","group")
+
+Spatial_RMSD_season_medium$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+Spatial_RMSD_season_medium$data<-'medium'
+
+#State
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_mo_ct_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_mo_ct_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_mo_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_mo_po_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_diff_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_diff_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+Spatial_RMSD_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_mo_ct_state)
+colnames(Spatial_RMSD_state1)=c('state','RMSD')
+Spatial_RMSD_state1$group='Reid vs Monitor'
+Spatial_RMSD_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_mo_po_state)
+colnames(Spatial_RMSD_state2)=c('state','RMSD')
+Spatial_RMSD_state2$group='Di vs Monitor'
+Spatial_RMSD_state3<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_diff_state)
+colnames(Spatial_RMSD_state3)=c('state','RMSD')
+Spatial_RMSD_state3$group='Di vs Reid'
+
+Spatial_RMSD_state_medium<-rbind(Spatial_RMSD_state1,Spatial_RMSD_state2,Spatial_RMSD_state3)
+colnames(Spatial_RMSD_state_medium)<-c("state","RMSD","group")
+
+Spatial_RMSD_state_medium$data<-'medium'
+
+
+```
+
+```{r}
+#########Spatial RMSD
+##Year
+subdata<-high
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_mo_ct_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_mo_ct_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_mo_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_mo_po_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+
+mydata<-aggregate(data=subdata,diff~GEOID+year,FUN=mean)
+colnames(mydata)<-c('GEOID','year','PM')
+spatial_RMSD_diff_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  spatial_RMSD_diff_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+Spatial_RMSD_year1<-data.frame(c(2011:2016),spatial_RMSD_mo_ct_year)
+colnames(Spatial_RMSD_year1)=c('state','RMSD')
+Spatial_RMSD_year1$group='Reid vs Monitor'
+
+Spatial_RMSD_year2<-data.frame(c(2011:2016),spatial_RMSD_mo_po_year)
+colnames(Spatial_RMSD_year2)=c('state','RMSD')
+Spatial_RMSD_year2$group='Di vs Monitor'
+Spatial_RMSD_year3<-data.frame(c(2011:2016),spatial_RMSD_diff_year)
+colnames(Spatial_RMSD_year3)=c('state','RMSD')
+Spatial_RMSD_year3$group='Di vs Reid'
+
+Spatial_RMSD_year_high<-rbind(Spatial_RMSD_year1,Spatial_RMSD_year2,Spatial_RMSD_year3)
+colnames(Spatial_RMSD_year_high)<-c("year","RMSD","group")
+Spatial_RMSD_year_high$data<-'high'
+
+#Season
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_mo_ct_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_mo_ct_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_mo_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_mo_po_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~GEOID+season,FUN=mean)
+colnames(mydata)<-c('GEOID','season','PM')
+spatial_RMSD_diff_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  spatial_RMSD_diff_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+
+Spatial_RMSD_season1<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_mo_ct_season)
+colnames(Spatial_RMSD_season1)=c('season','RMSD')
+Spatial_RMSD_season1$group='Reid vs Monitor'
+Spatial_RMSD_season2<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_mo_po_season)
+colnames(Spatial_RMSD_season2)=c('season','RMSD')
+Spatial_RMSD_season2$group='Di vs Monitor'
+Spatial_RMSD_season3<-data.frame(c("spring","summer","autumn","winter"),spatial_RMSD_diff_season)
+colnames(Spatial_RMSD_season3)=c('season','RMSD')
+Spatial_RMSD_season3$group='Di vs Reid'
+
+Spatial_RMSD_season_high<-rbind(Spatial_RMSD_season1,Spatial_RMSD_season2,Spatial_RMSD_season3)
+colnames(Spatial_RMSD_season_high)<-c("season","RMSD","group")
+
+Spatial_RMSD_season_high$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+Spatial_RMSD_season_high$data<-'high'
+
+#State
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_mo_ct_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_mo_ct_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_mo_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_mo_po_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~GEOID+state,FUN=mean)
+colnames(mydata)<-c('GEOID','state','PM')
+spatial_RMSD_diff_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  spatial_RMSD_diff_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+Spatial_RMSD_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_mo_ct_state)
+colnames(Spatial_RMSD_state1)=c('state','RMSD')
+Spatial_RMSD_state1$group='Reid vs Monitor'
+Spatial_RMSD_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_mo_po_state)
+colnames(Spatial_RMSD_state2)=c('state','RMSD')
+Spatial_RMSD_state2$group='Di vs Monitor'
+Spatial_RMSD_state3<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),spatial_RMSD_diff_state)
+colnames(Spatial_RMSD_state3)=c('state','RMSD')
+Spatial_RMSD_state3$group='Di vs Reid'
+
+Spatial_RMSD_state_high<-rbind(Spatial_RMSD_state1,Spatial_RMSD_state2,Spatial_RMSD_state3)
+colnames(Spatial_RMSD_state_high)<-c("state","RMSD","group")
+
+Spatial_RMSD_state_high$data<-'high'
+```
+
+```{r}
+#Temporal RMSD
+##Year
+subdata<-valid
+mydata<-aggregate(data=subdata,diff_mo_ct~date+year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_mo_ct_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_mo_ct_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_mo_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_mo_po_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~ date +year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_diff_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_diff_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+temporal_RMSD_year1<-data.frame(c(2011:2016),temporal_RMSD_mo_ct_year)
+colnames(temporal_RMSD_year1)=c('state','RMSD')
+temporal_RMSD_year1$group='Reid vs Monitor'
+temporal_RMSD_year2<-data.frame(c(2011:2016),temporal_RMSD_mo_po_year)
+colnames(temporal_RMSD_year2)=c('state','RMSD')
+temporal_RMSD_year2$group='Di vs Monitor'
+temporal_RMSD_year3<-data.frame(c(2011:2016),temporal_RMSD_diff_year)
+colnames(temporal_RMSD_year3)=c('state','RMSD')
+temporal_RMSD_year3$group='Di vs Reid'
+
+temporal_RMSD_year<-rbind(temporal_RMSD_year1,temporal_RMSD_year2,temporal_RMSD_year3)
+colnames(temporal_RMSD_year)<-c("year","RMSD","group")
+temporal_RMSD_year$data<-'overall'
+
+#Season
+mydata<-aggregate(data=subdata,diff_mo_ct~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_mo_ct_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_mo_ct_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_mo_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_mo_po_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_diff_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_diff_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+temporal_RMSD_season1<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_mo_ct_season)
+colnames(temporal_RMSD_season1)=c('season','RMSD')
+temporal_RMSD_season1$group='Reid vs Monitor'
+temporal_RMSD_season2<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_mo_po_season)
+colnames(temporal_RMSD_season2)=c('season','RMSD')
+temporal_RMSD_season2$group='Di vs Monitor'
+temporal_RMSD_season3<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_diff_season)
+colnames(temporal_RMSD_season3)=c('season','RMSD')
+temporal_RMSD_season3$group='Di vs Reid'
+
+temporal_RMSD_season<-rbind(temporal_RMSD_season1,temporal_RMSD_season2,temporal_RMSD_season3)
+colnames(temporal_RMSD_season)<-c("season","RMSD","group")
+
+temporal_RMSD_season$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+colnames(temporal_RMSD_season)<-c("season","RMSD","group")
+temporal_RMSD_season$data<-'overall'
+
+#State
+mydata<-aggregate(data=subdata,diff_mo_ct~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_mo_ct_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_mo_ct_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_mo_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_mo_po_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_diff_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_diff_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+temporal_RMSD_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_mo_ct_state)
+colnames(temporal_RMSD_state1)=c('state','RMSD')
+temporal_RMSD_state1$group='Reid vs Monitor'
+temporal_RMSD_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_mo_po_state)
+colnames(temporal_RMSD_state2)=c('state','RMSD')
+temporal_RMSD_state2$group='Di vs Monitor'
+temporal_RMSD_state3<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_diff_state)
+colnames(temporal_RMSD_state3)=c('state','RMSD')
+temporal_RMSD_state3$group='Di vs Reid'
+
+
+temporal_RMSD_state<-rbind(temporal_RMSD_state1,temporal_RMSD_state2,temporal_RMSD_state3)
+colnames(temporal_RMSD_state)<-c("state","RMSD","group")
+temporal_RMSD_state$data<-'overall'
+```
+
+```{r}
+#Temporal RMSD
+##Year
+subdata<-medium
+mydata<-aggregate(data=subdata,diff_mo_ct~date+year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_mo_ct_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_mo_ct_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_mo_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_mo_po_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~ date +year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_diff_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_diff_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+temporal_RMSD_year1<-data.frame(c(2011:2016),temporal_RMSD_mo_ct_year)
+colnames(temporal_RMSD_year1)=c('state','RMSD')
+temporal_RMSD_year1$group='Reid vs Monitor'
+temporal_RMSD_year2<-data.frame(c(2011:2016),temporal_RMSD_mo_po_year)
+colnames(temporal_RMSD_year2)=c('state','RMSD')
+temporal_RMSD_year2$group='Di vs Monitor'
+temporal_RMSD_year3<-data.frame(c(2011:2016),temporal_RMSD_diff_year)
+colnames(temporal_RMSD_year3)=c('state','RMSD')
+temporal_RMSD_year3$group='Di vs Reid'
+
+temporal_RMSD_year_medium<-rbind(temporal_RMSD_year1,temporal_RMSD_year2,temporal_RMSD_year3)
+colnames(temporal_RMSD_year_medium)<-c("year","RMSD","group")
+temporal_RMSD_year_medium$data<-'medium'
+
+
+#Season
+mydata<-aggregate(data=subdata,diff_mo_ct~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_mo_ct_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_mo_ct_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_mo_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_mo_po_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_diff_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_diff_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+temporal_RMSD_season1<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_mo_ct_season)
+colnames(temporal_RMSD_season1)=c('season','RMSD')
+temporal_RMSD_season1$group='Reid vs Monitor'
+temporal_RMSD_season2<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_mo_po_season)
+colnames(temporal_RMSD_season2)=c('season','RMSD')
+temporal_RMSD_season2$group='Di vs Monitor'
+temporal_RMSD_season3<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_diff_season)
+colnames(temporal_RMSD_season3)=c('season','RMSD')
+temporal_RMSD_season3$group='Di vs Reid'
+
+temporal_RMSD_season_medium<-rbind(temporal_RMSD_season1,temporal_RMSD_season2,temporal_RMSD_season3)
+colnames(temporal_RMSD_season_medium)<-c("season","RMSD","group")
+temporal_RMSD_season_medium$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+colnames(temporal_RMSD_season_medium)<-c("season","RMSD","group")
+temporal_RMSD_season_medium$data<-'medium'
+#State
+mydata<-aggregate(data=subdata,diff_mo_ct~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_mo_ct_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_mo_ct_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_mo_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_mo_po_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_diff_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_diff_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+temporal_RMSD_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_mo_ct_state)
+colnames(temporal_RMSD_state1)=c('state','RMSD')
+temporal_RMSD_state1$group='Reid vs Monitor'
+temporal_RMSD_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_mo_po_state)
+colnames(temporal_RMSD_state2)=c('state','RMSD')
+temporal_RMSD_state2$group='Di vs Monitor'
+temporal_RMSD_state3<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_diff_state)
+colnames(temporal_RMSD_state3)=c('state','RMSD')
+temporal_RMSD_state3$group='Di vs Reid'
+
+
+temporal_RMSD_state_medium<-rbind(temporal_RMSD_state1,temporal_RMSD_state2,temporal_RMSD_state3)
+colnames(temporal_RMSD_state_medium)<-c("state","RMSD","group")
+temporal_RMSD_state_medium$data<-'medium'
+```
+
+```{r}
+#Temporal RMSD
+##Year
+subdata<-high
+mydata<-aggregate(data=subdata,diff_mo_ct~date+year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_mo_ct_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_mo_ct_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_mo_po_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_mo_po_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~ date +year,FUN=mean)
+colnames(mydata)<-c('date','year','PM')
+temporal_RMSD_diff_year<-rep(NA,6)
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  temporal_RMSD_diff_year[i-2010]<-sqrt((1/(nrow(data_year)))*(sum((data_year$PM)^2)))
+}
+
+temporal_RMSD_year1<-data.frame(c(2011:2016),temporal_RMSD_mo_ct_year)
+colnames(temporal_RMSD_year1)=c('state','RMSD')
+temporal_RMSD_year1$group='Reid vs Monitor'
+temporal_RMSD_year2<-data.frame(c(2011:2016),temporal_RMSD_mo_po_year)
+colnames(temporal_RMSD_year2)=c('state','RMSD')
+temporal_RMSD_year2$group='Di vs Monitor'
+temporal_RMSD_year3<-data.frame(c(2011:2016),temporal_RMSD_diff_year)
+colnames(temporal_RMSD_year3)=c('state','RMSD')
+temporal_RMSD_year3$group='Di vs Reid'
+
+temporal_RMSD_year_high<-rbind(temporal_RMSD_year1,temporal_RMSD_year2,temporal_RMSD_year3)
+colnames(temporal_RMSD_year_high)<-c("year","RMSD","group")
+temporal_RMSD_year_high$data<-'high'
+
+
+#Season
+mydata<-aggregate(data=subdata,diff_mo_ct~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_mo_ct_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_mo_ct_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_mo_po_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_mo_po_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~date+season,FUN=mean)
+colnames(mydata)<-c('date','season','PM')
+temporal_RMSD_diff_season<-rep(NA,4)
+for (i in 1:4){
+  data_season<-mydata[which(mydata$season==c("spring","summer","autumn","winter")[i]),]
+  temporal_RMSD_diff_season[i]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+}
+
+temporal_RMSD_season1<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_mo_ct_season)
+colnames(temporal_RMSD_season1)=c('season','RMSD')
+temporal_RMSD_season1$group='Reid vs Monitor'
+temporal_RMSD_season2<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_mo_po_season)
+colnames(temporal_RMSD_season2)=c('season','RMSD')
+temporal_RMSD_season2$group='Di vs Monitor'
+temporal_RMSD_season3<-data.frame(c("spring","summer","autumn","winter"),temporal_RMSD_diff_season)
+colnames(temporal_RMSD_season3)=c('season','RMSD')
+temporal_RMSD_season3$group='Di vs Reid'
+
+temporal_RMSD_season_high<-rbind(temporal_RMSD_season1,temporal_RMSD_season2,temporal_RMSD_season3)
+colnames(temporal_RMSD_season_high)<-c("season","RMSD","group")
+temporal_RMSD_season_high$season<-factor(c("spring","summer","autumn","winter"),levels =c("spring","summer","autumn","winter"))
+colnames(temporal_RMSD_season_high)<-c("season","RMSD","group")
+temporal_RMSD_season_high$data<-'high'
+#State
+mydata<-aggregate(data=subdata,diff_mo_ct~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_mo_ct_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_mo_ct_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff_mo_po~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_mo_po_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_mo_po_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+mydata<-aggregate(data=subdata,diff~date+state,FUN=mean)
+colnames(mydata)<-c('date','state','PM')
+temporal_RMSD_diff_state<-rep(NA,10)
+for (i in 1:10){
+  data_state<-mydata[which(mydata$state==c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming')[i]),]
+  temporal_RMSD_diff_state[i]<-sqrt((1/(nrow(data_state)))*(sum((data_state$PM)^2)))
+}
+
+temporal_RMSD_state1<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_mo_ct_state)
+colnames(temporal_RMSD_state1)=c('state','RMSD')
+temporal_RMSD_state1$group='Reid vs Monitor'
+temporal_RMSD_state2<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_mo_po_state)
+colnames(temporal_RMSD_state2)=c('state','RMSD')
+temporal_RMSD_state2$group='Di vs Monitor'
+temporal_RMSD_state3<-data.frame(c('arizona','california','colorado','idaho','montana','new mexico','oregon','utah','washington','wyoming'),temporal_RMSD_diff_state)
+colnames(temporal_RMSD_state3)=c('state','RMSD')
+temporal_RMSD_state3$group='Di vs Reid'
+
+
+temporal_RMSD_state_high<-rbind(temporal_RMSD_state1,temporal_RMSD_state2,temporal_RMSD_state3)
+colnames(temporal_RMSD_state_high)<-c("state","RMSD","group")
+temporal_RMSD_state_high$data<-'high'
+```
+
+```{r}
+RMSD_year<-rbind(Spatial_RMSD_year,Spatial_RMSD_year_medium,Spatial_RMSD_year_high,temporal_RMSD_year,temporal_RMSD_year_medium,temporal_RMSD_year_high)
+RMSD_year$RMSD_group<-c(rep("Spatial RMSD",54),rep("Temporal RMSD",54))
+colnames(RMSD_year) = c('year','value','group','data','metrics')
+
+RMSD_season<-rbind(Spatial_RMSD_season,Spatial_RMSD_season_medium,Spatial_RMSD_season_high,temporal_RMSD_season,temporal_RMSD_season_medium,temporal_RMSD_season_high)
+RMSD_season$RMSD_group<-c(rep("Spatial RMSD",36),rep("Temporal RMSD",36))
+colnames(RMSD_season) = c('season','value','group','data','metrics')
+
+RMSD_state<-rbind(Spatial_RMSD_state,Spatial_RMSD_state_medium,Spatial_RMSD_state_high,temporal_RMSD_state,temporal_RMSD_state_medium,temporal_RMSD_state_high)
+RMSD_state$RMSD_group<-c(rep("Spatial RMSD",90),rep("Temporal RMSD",90))
+colnames(RMSD_state) = c('state','value','group','data','metrics')
+```
+
+```{r}
+correlate_valid_state <- valid %>%
+                group_by(state) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_state<-data.frame(rep(c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming'),3),unlist(correlate_valid_state[-1]),c(rep(c('Reid vs Monitor'),11),rep(c('Di vs Monitor'),11),rep(c('Di vs Reid'),11)),'overall','R^2')
+colnames(table_valid_state)=c('state','value','group','data','metrics')
+rownames(table_valid_state)<-NULL
+
+correlate_medium_state <- medium %>%
+                group_by(state) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_state_medium<-data.frame(rep(c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming'),3),unlist(correlate_medium_state[-1]),c(rep(c('Reid vs Monitor'),11),rep(c('Di vs Monitor'),11),rep(c('Di vs Reid'),11)),'medium','R^2')
+colnames(table_valid_state_medium)=c('state','value','group','data','metrics')
+rownames(table_valid_state_medium)<-NULL
+
+
+correlate_high_state <- high %>%
+                group_by(state) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_state_high<-data.frame(rep(c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming'),3),unlist(correlate_high_state[-1]),c(rep(c('Reid vs Monitor'),11),rep(c('Di vs Monitor'),11),rep(c('Di vs Reid'),11)),'high','R^2')
+colnames(table_valid_state_high)=c('state','value','group','data','metrics')
+rownames(table_valid_state_high)<-NULL
+
+Metrics_state<-rbind(RMSD_state,table_valid_state,table_valid_state_medium,table_valid_state_high)
+
+```
+
+```{r}
+correlate_valid_year <- valid %>%
+                group_by(year) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_year<-data.frame(rep(c(2008:2016),3),unlist(correlate_valid_year[-1]),c(rep(c('Reid vs Monitor'),9),rep(c('Di vs Monitor'),9),rep(c('Di vs Reid'),9)),'overall','R^2')
+colnames(table_valid_year)=c('year','value','group','data','metrics')
+rownames(table_valid_year)<-NULL
+
+correlate_medium_year <- medium %>%
+                group_by(year) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_year_medium<-data.frame(rep(c(2008:2016),3),unlist(correlate_medium_year[-1]),c(rep(c('Reid vs Monitor'),9),rep(c('Di vs Monitor'),9),rep(c('Di vs Reid'),9)),'medium','R^2')
+colnames(table_valid_year_medium)=c('year','value','group','data','metrics')
+rownames(table_valid_year_medium)<-NULL
+
+
+correlate_high_year <- high %>%
+                group_by(year) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_year_high<-data.frame(rep(c(2008:2016),3),unlist(correlate_high_year[-1]),c(rep(c('Reid vs Monitor'),9),rep(c('Di vs Monitor'),9),rep(c('Di vs Reid'),9)),'high','R^2')
+colnames(table_valid_year_high)=c('year','value','group','data','metrics')
+rownames(table_valid_year_high)<-NULL
+
+Metrics_year<-rbind(RMSD_year,table_valid_year,table_valid_year_medium,table_valid_year_high)
+
+```
+
+```{r}
+correlate_valid_season <- valid %>%
+                group_by(season) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_season<-data.frame(rep(c('spring','summer','autumn','winter'),3),unlist(correlate_valid_season[-1]),c(rep(c('Reid vs Monitor'),4),rep(c('Di vs Monitor'),4),rep(c('Di vs Reid'),4)),'overall','R^2')
+colnames(table_valid_season)=c('season','value','group','data','metrics')
+rownames(table_valid_season)<-NULL
+
+correlate_medium_season <- medium %>%
+                group_by(season) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_season_medium<-data.frame(rep(c('spring','summer','autumn','winter'),3),unlist(correlate_medium_season[-1]),c(rep(c('Reid vs Monitor'),4),rep(c('Di vs Monitor'),4),rep(c('Di vs Reid'),4)),'medium','R^2')
+colnames(table_valid_season_medium)=c('season','value','group','data','metrics')
+rownames(table_valid_season_medium)<-NULL
+
+
+correlate_high_season <- high %>%
+                group_by(season) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_season_high<-data.frame(rep(c('spring','summer','autumn','winter'),3),unlist(correlate_high_season[-1]),c(rep(c('Reid vs Monitor'),4),rep(c('Di vs Monitor'),4),rep(c('Di vs Reid'),4)),'high','R^2')
+colnames(table_valid_season_high)=c('season','value','group','data','metrics')
+rownames(table_valid_season_high)<-NULL
+
+Metrics_season<-rbind(RMSD_season,table_valid_season,table_valid_season_medium,table_valid_season_high)
+
+saveRDS(Metrics_season,'/n/home02/haohaojy/monitor/portable/Metrics_season.rds')
+saveRDS(Metrics_year,'/n/home02/haohaojy/monitor/portable/Metrics_year.rds')
+saveRDS(Metrics_state,'/n/home02/haohaojy/monitor/portable/Metrics_state.rds')
+```
+
+
+```{r}
+#########Spatial RMSD
+##Year+Season Overall
+subdata<-valid
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+year+season,FUN=mean)
+colnames(mydata)<-c('GEOID','year','season','PM')
+
+spatial_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    spatial_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+spatial_RMSD_year_season1<-data.frame(spatial_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(spatial_RMSD_year_season1)<-c('value','year','season')
+spatial_RMSD_year_season1$group<-'Reid vs Monitor'
+spatial_RMSD_year_season1$data<-'overall'
+spatial_RMSD_year_season1$Metrics<-"Spatial RMSD"
+  
+############################
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+year+season,FUN=mean)
+colnames(mydata)<-c('GEOID','year','season','PM')
+
+spatial_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    spatial_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+spatial_RMSD_year_season2<-data.frame(spatial_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(spatial_RMSD_year_season2)<-c('value','year','season')
+spatial_RMSD_year_season2$group<-'Reid vs Monitor'
+spatial_RMSD_year_season2$data<-'overall'
+spatial_RMSD_year_season2$Metrics<-"Spatial RMSD"
+  
+
+#############################
+mydata<-aggregate(data=subdata,diff~GEOID+year+season,FUN=mean)
+colnames(mydata)<-c('GEOID','year','season','PM')
+
+spatial_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    spatial_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+spatial_RMSD_year_season3<-data.frame(spatial_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(spatial_RMSD_year_season3)<-c('value','year','season')
+spatial_RMSD_year_season3$group<-'Reid vs Monitor'
+spatial_RMSD_year_season3$data<-'overall'
+spatial_RMSD_year_season3$Metrics<-"Spatial RMSD"
+
+spatial_RMSD_year_season_overall<-rbind(spatial_RMSD_year_season1,spatial_RMSD_year_season2,spatial_RMSD_year_season3)
+
+##Year+Season Medium
+subdata<-medium
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+year+season,FUN=mean)
+colnames(mydata)<-c('GEOID','year','season','PM')
+
+spatial_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    spatial_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+spatial_RMSD_year_season1<-data.frame(spatial_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(spatial_RMSD_year_season1)<-c('value','year','season')
+spatial_RMSD_year_season1$group<-'Reid vs Monitor'
+spatial_RMSD_year_season1$data<-'medium'
+spatial_RMSD_year_season1$Metrics<-"Spatial RMSD"
+  
+############################
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+year+season,FUN=mean)
+colnames(mydata)<-c('GEOID','year','season','PM')
+
+spatial_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    spatial_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+spatial_RMSD_year_season2<-data.frame(spatial_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(spatial_RMSD_year_season2)<-c('value','year','season')
+spatial_RMSD_year_season2$group<-'Reid vs Monitor'
+spatial_RMSD_year_season2$data<-'medium'
+spatial_RMSD_year_season2$Metrics<-"Spatial RMSD"
+  
+############################
+
+#############################
+mydata<-aggregate(data=subdata,diff~GEOID+year+season,FUN=mean)
+colnames(mydata)<-c('GEOID','year','season','PM')
+
+spatial_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    spatial_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+spatial_RMSD_year_season3<-data.frame(spatial_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(spatial_RMSD_year_season3)<-c('value','year','season')
+spatial_RMSD_year_season3$group<-'Reid vs Monitor'
+spatial_RMSD_year_season3$data<-'medium'
+spatial_RMSD_year_season3$Metrics<-"Spatial RMSD"
+
+spatial_RMSD_year_season_medium<-rbind(spatial_RMSD_year_season1,spatial_RMSD_year_season2,spatial_RMSD_year_season3)
+
+
+
+####Year+Season High
+subdata<-high
+mydata<-aggregate(data=subdata,diff_mo_ct~GEOID+year+season,FUN=mean)
+colnames(mydata)<-c('GEOID','year','season','PM')
+
+spatial_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    spatial_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+spatial_RMSD_year_season1<-data.frame(spatial_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(spatial_RMSD_year_season1)<-c('value','year','season')
+spatial_RMSD_year_season1$group<-'Reid vs Monitor'
+spatial_RMSD_year_season1$data<-'high'
+spatial_RMSD_year_season1$Metrics<-"Spatial RMSD"
+  
+############################
+mydata<-aggregate(data=subdata,diff_mo_po~GEOID+year+season,FUN=mean)
+colnames(mydata)<-c('GEOID','year','season','PM')
+
+spatial_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    spatial_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+spatial_RMSD_year_season2<-data.frame(spatial_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(spatial_RMSD_year_season2)<-c('value','year','season')
+spatial_RMSD_year_season2$group<-'Reid vs Monitor'
+spatial_RMSD_year_season2$data<-'high'
+spatial_RMSD_year_season2$Metrics<-"Spatial RMSD"
+  
+############################
+
+#############################
+spatial_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    spatial_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+spatial_RMSD_year_season3<-data.frame(spatial_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(spatial_RMSD_year_season3)<-c('value','year','season')
+spatial_RMSD_year_season3$group<-'Reid vs Monitor'
+spatial_RMSD_year_season3$data<-'high'
+spatial_RMSD_year_season3$Metrics<-"Spatial RMSD"
+
+spatial_RMSD_year_season_high<-rbind(spatial_RMSD_year_season1,spatial_RMSD_year_season2,spatial_RMSD_year_season3)
+
+
+spatial_RMSD_year_season<-rbind(spatial_RMSD_year_season_overall,spatial_RMSD_year_season_medium,spatial_RMSD_year_season_high)
+```
+
+
+```{r}
+#########Temporal RMSD
+##Year+Season Overall
+subdata<-valid
+mydata<-aggregate(data=subdata,diff_mo_ct~date +year+season,FUN=mean)
+colnames(mydata)<-c('date','year','season','PM')
+
+temporal_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    temporal_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+temporal_RMSD_year_season1<-data.frame(temporal_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(temporal_RMSD_year_season1)<-c('value','year','season')
+temporal_RMSD_year_season1$group<-'Reid vs Monitor'
+temporal_RMSD_year_season1$data<-'overall'
+temporal_RMSD_year_season1$Metrics<-"Temporal RMSD"
+  
+############################
+mydata<-aggregate(data=subdata,diff_mo_po~date+year+season,FUN=mean)
+colnames(mydata)<-c('date','year','season','PM')
+
+temporal_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    temporal_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+temporal_RMSD_year_season2<-data.frame(temporal_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(temporal_RMSD_year_season2)<-c('value','year','season')
+temporal_RMSD_year_season2$group<-'Reid vs Monitor'
+temporal_RMSD_year_season2$data<-'overall'
+temporal_RMSD_year_season2$Metrics<-"Temporal RMSD"
+  
+
+#############################
+mydata<-aggregate(data=subdata,diff~date+year+season,FUN=mean)
+colnames(mydata)<-c('date','year','season','PM')
+
+temporal_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    temporal_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+temporal_RMSD_year_season3<-data.frame(temporal_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(temporal_RMSD_year_season3)<-c('value','year','season')
+temporal_RMSD_year_season3$group<-'Reid vs Monitor'
+temporal_RMSD_year_season3$data<-'overall'
+temporal_RMSD_year_season3$Metrics<-"Temporal RMSD"
+
+temporal_RMSD_year_season_overall<-rbind(temporal_RMSD_year_season1,temporal_RMSD_year_season2,temporal_RMSD_year_season3)
+
+##Year+Season Medium
+subdata<-medium
+mydata<-aggregate(data=subdata,diff_mo_ct~date+year+season,FUN=mean)
+colnames(mydata)<-c('date','year','season','PM')
+
+temporal_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    temporal_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+temporal_RMSD_year_season1<-data.frame(temporal_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(temporal_RMSD_year_season1)<-c('value','year','season')
+temporal_RMSD_year_season1$group<-'Reid vs Monitor'
+temporal_RMSD_year_season1$data<-'medium'
+temporal_RMSD_year_season1$Metrics<-"Temporal RMSD"
+  
+############################
+mydata<-aggregate(data=subdata,diff_mo_po~date+year+season,FUN=mean)
+colnames(mydata)<-c('date','year','season','PM')
+
+temporal_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    temporal_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+temporal_RMSD_year_season2<-data.frame(temporal_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(temporal_RMSD_year_season2)<-c('value','year','season')
+temporal_RMSD_year_season2$group<-'Reid vs Monitor'
+temporal_RMSD_year_season2$data<-'medium'
+temporal_RMSD_year_season2$Metrics<-"Temporal RMSD"
+  
+############################
+
+#############################
+mydata<-aggregate(data=subdata,diff~date+year+season,FUN=mean)
+colnames(mydata)<-c('date','year','season','PM')
+
+temporal_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    temporal_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+temporal_RMSD_year_season3<-data.frame(temporal_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(temporal_RMSD_year_season3)<-c('value','year','season')
+temporal_RMSD_year_season3$group<-'Reid vs Monitor'
+temporal_RMSD_year_season3$data<-'medium'
+temporal_RMSD_year_season3$Metrics<-"Temporal RMSD"
+
+temporal_RMSD_year_season_medium<-rbind(temporal_RMSD_year_season1,temporal_RMSD_year_season2,temporal_RMSD_year_season3)
+
+
+
+####Year+Season High
+subdata<-high
+mydata<-aggregate(data=subdata,diff_mo_ct~date+year+season,FUN=mean)
+colnames(mydata)<-c('date','year','season','PM')
+
+temporal_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    temporal_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+temporal_RMSD_year_season1<-data.frame(temporal_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(temporal_RMSD_year_season1)<-c('value','year','season')
+temporal_RMSD_year_season1$group<-'Reid vs Monitor'
+temporal_RMSD_year_season1$data<-'high'
+temporal_RMSD_year_season1$Metrics<-"Temporal RMSD"
+  
+############################
+mydata<-aggregate(data=subdata,diff_mo_po~date+year+season,FUN=mean)
+colnames(mydata)<-c('date','year','season','PM')
+
+temporal_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    temporal_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+temporal_RMSD_year_season2<-data.frame(temporal_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(temporal_RMSD_year_season2)<-c('value','year','season')
+temporal_RMSD_year_season2$group<-'Reid vs Monitor'
+temporal_RMSD_year_season2$data<-'high'
+temporal_RMSD_year_season2$Metrics<-"Temporal RMSD"
+  
+############################
+
+#############################
+temporal_RMSD_mo_ct_year<-rep(NA,24)
+n=0
+for (i in 2011:2016){
+  data_year<-mydata[which(mydata$year==i),]
+  for (j in 1:4){
+    n = n+1
+    data_season<-data_year[which(data_year$season==c("spring","summer","autumn","winter")[j]),]
+    temporal_RMSD_mo_ct_year[n]<-sqrt((1/(nrow(data_season)))*(sum((data_season$PM)^2)))
+  }
+}
+
+temporal_RMSD_year_season3<-data.frame(temporal_RMSD_mo_ct_year, c(rep(2011,4),rep(2012,4),rep(2013,4),rep(2014,4),rep(2015,4),rep(2016,4)),rep(c("spring","summer","autumn","winter"),6))
+colnames(temporal_RMSD_year_season3)<-c('value','year','season')
+temporal_RMSD_year_season3$group<-'Reid vs Monitor'
+temporal_RMSD_year_season3$data<-'high'
+temporal_RMSD_year_season3$Metrics<-"Temporal RMSD"
+
+temporal_RMSD_year_season_high<-rbind(temporal_RMSD_year_season1,temporal_RMSD_year_season2,temporal_RMSD_year_season3)
+
+
+temporal_RMSD_year_season<-rbind(temporal_RMSD_year_season_overall,temporal_RMSD_year_season_medium,temporal_RMSD_year_season_high)
+RMSD_year_season<-rbind(spatial_RMSD_year_season,temporal_RMSD_year_season)
+```
+
+```{r}
+correlate_valid_year_season <- valid %>%
+                group_by(season,year) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_valid_year_season<-data.frame(rep(rep(c(2008:2016),4),3),rep(c(rep('autumn',9),rep('spring',9),rep('summer',9),rep('winter',9)),3),unlist(correlate_valid_year_season[-2:(-1)]),c(rep(c('Reid vs Monitor'),36),rep(c('Di vs Monitor'),36),rep(c('Di vs Reid'),36)),'overall','R^2')
+colnames(table_valid_year_season)=c('year','season','value','group','data','Metrics')
+rownames(table_valid_year_season)<-NULL
+
+correlate_medium_year_season <- medium %>%
+                group_by(season,year) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+table_medium_year_season<-data.frame(rep(rep(c(2008:2016),4),3),rep(c(rep('autumn',9),rep('spring',9),rep('summer',9),rep('winter',9)),3),unlist(correlate_medium_year_season[-2:(-1)]),c(rep(c('Reid vs Monitor'),36),rep(c('Di vs Monitor'),36),rep(c('Di vs Reid'),36)),'medium','R^2')
+colnames(table_medium_year_season)=c('year','season','value','group','data','Metrics')
+rownames(table_medium_year_season)<-NULL
+
+correlate_high_year_season <- high %>%
+                group_by(season,year) %>% 
+                summarise(r_mo_reid=cor(PM2.5, Ens_pred),r_mo_di = cor(PM2.5, PM_grid), r_reid_di = cor(Ens_pred, PM_grid))
+correlate_high_year_season<-correlate_high_year_season[-10,]
+correlate_high_year_season<-correlate_high_year_season[-22,]
+
+
+table_high_year_season<-data.frame(rep(correlate_high_year_season$year,3),rep(correlate_high_year_season$season,3),unlist(correlate_high_year_season[-2:(-1)]),c(rep(c('Reid vs Monitor'),26),rep(c('Di vs Monitor'),26),rep(c('Di vs Reid'),26)),'high','R^2')
+colnames(table_high_year_season)=c('year','season','value','group','data','Metrics')
+rownames(table_high_year_season)<-NULL
+
+RMSD_year_season<-RMSD_year_season %>% select('year','season','value','group','data','Metrics')
+metrics_year_season<-rbind(RMSD_year_season,table_valid_year_season,table_medium_year_season,table_high_year_season)
+saveRDS(metrics_year_season,'/n/home02/haohaojy/monitor/portable/Metrics_year_season.rds')
+```
