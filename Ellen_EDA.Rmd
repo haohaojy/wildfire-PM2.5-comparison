@@ -79,6 +79,74 @@ valid<- valid[-di_na_pos,]
 ```
 
 ```{r}
+## Make scatterplots with different colors by date and state:
+
+plot_3_combos<- function(df, col_var, shape_var){
+  
+  if(col_var == "state"){
+    shape_info<- c(rep(16,6), rep(17,5))
+  }else{
+    shape_info<- rep(16,5)
+  }
+  
+  p1<- ggplot(df,
+              aes_string(x="PM2.5", y="PM_grid", color = col_var, shape = shape_var))+
+    geom_point()+geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
+    ylab("Di Estimates")
+  p2<- ggplot(df,
+              aes_string(x="PM2.5",y="Ens_pred", color = col_var, shape = shape_var))+
+    geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
+    ylab("Reid Estimates")
+  
+  if(col_var == "state"){
+    p3<- ggplot(df,
+              aes_string(x="Ens_pred", y="PM_grid", color = col_var, shape = shape_var))+
+    geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
+    ylab("Di Estimates") + guides(shape = "none",
+                                  color = 
+                                   guide_legend(override.aes = 
+                                                  list(shape = shape_info)) )
+    this_leg<- get_legend(p3 +
+                        theme(legend.position = "bottom", legend.box = "vertical",
+                               legend.key.width = unit(0.25, "line"), 
+                              legend.spacing.y = unit(0.1, "cm")))
+  }else{
+    p3<- ggplot(df,
+              aes_string(x="Ens_pred", y="PM_grid", color = col_var, shape = shape_var))+
+    geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
+    ylab("Di Estimates") + guides(shape = "none")
+    
+    this_leg<- get_legend(p3 + theme(legend.position = "bottom",
+                                     legend.key.width = unit(1.25, "cm")))
+  }
+  
+  plot_grid(p1 + theme(legend.position="none"),
+            p2 + theme(legend.position="none"),
+            p3 + theme(legend.position="none"),
+            this_leg, nrow = 4, rel_heights = c(1,1,1,0.25))
+}
+
+## Make plots:
+valid$pch<- 16
+valid$pch[which(valid$state > "nevada")]<- 17
+valid$pch<- factor(valid$pch)
+valid$state<- factor(valid$state)
+png("Plots/Scatterplots_state-colors.png", width=350, height=700)
+plot_3_combos(valid, "state", "pch")
+dev.off()
+
+# valid$date<- as.Date(valid$date)
+valid$ones<- factor(1)
+png("Plots/Scatterplots_year-colors.png", width=350, height=700)
+plot_3_combos(valid, "year", "ones")
+dev.off()
+```
+
+```{r}
 ## Looking at high levels of PM2.5 as well as overall:
 
 medium<- valid[which(valid$PM2.5 >= 12),] # 7705 obs
