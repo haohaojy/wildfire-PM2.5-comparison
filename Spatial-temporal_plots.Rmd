@@ -1,0 +1,295 @@
+---
+title: "Spatiotemporal Plots"
+author: "Ellen Considine"
+date: "2/22/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(cowplot)
+
+CBF<- palette.colors()
+
+setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
+
+## Read in results:
+
+# Year<- readRDS("spatial-temporal-2/Metrics_year_w17.rds")
+# State<- readRDS("spatial-temporal-2/Metrics_state_w17.rds")
+# Season<- readRDS("spatial-temporal-2/Metrics_season_w17.rds")
+# Year.Season<- readRDS("spatial-temporal-2/Metrics_year_season_w.rds")
+
+Year<- readRDS("spatial-temporal-2/Metrics_year_wo17.rds")
+State<- readRDS("spatial-temporal-2/Metrics_state_wo17.rds")
+Season<- readRDS("spatial-temporal-2/Metrics_season_wo17.rds")
+Year.Season<- readRDS("spatial-temporal-2/Metrics_year_season_wo.rds")
+
+
+```
+
+```{r}
+
+## Exploratory
+
+length(Year[which(Year$number < 10),"number"]) # 6
+length(State[which(State$number < 10),"number"]) # 33
+length(Season[which(Season$number < 10),"number"]) # 0
+length(Year.Season[which(Year.Season$number < 10),"number"]) # 198
+
+Year[which(Year$number < 10),]
+State[which(State$number < 10),]
+Year.Season[which(Year.Season$number < 10),]
+
+```
+
+```{r}
+
+## Adding transparency variable based on number of observations
+
+my_alph<- function(num_vec){
+  a<- rep(1, length(num_vec))
+  a[num_vec < 20]<- sqrt( num_vec[num_vec < 20]/20 )
+  return(a)
+}
+
+Year$alpha<- my_alph(Year$number)
+State$alpha<- my_alph(State$number)
+Season$alpha<- my_alph(Season$number)
+
+```
+
+
+```{r}
+
+## Year
+
+year_plot<- function(metric){
+  year<- Year[which(Year$metrics == metric),]
+  year<- year[which(year$data != "overall"),]
+  
+  if(metric == "R^2"){
+    year$value<- year$value^2 # originally, was just correlation
+  }
+  
+  p<- ggplot(year, aes(x=year, y=value, color=group, linetype=data)) + geom_line() +
+    ggtitle(metric) + xlab("Year") + ylab("") +
+    scale_color_manual(values=c(as.vector(CBF[6]), as.vector(CBF[2]), as.vector(CBF[7])))
+  
+  # also adjust y-axis (using correct units); labels for groups
+  
+  return(p)
+}
+
+M<- length(unique(Year$metrics))
+y_list<- vector(mode = "list", length = M+1)
+
+for(m in 1:M){
+  y_list[[m]]<- year_plot(unique(Year$metrics)[m]) + theme(legend.position="none")
+}
+
+y_legend<- get_legend(year_plot(unique(Year$metrics)[1]) +
+                        theme(legend.position = "bottom", legend.box = "vertical",
+                               legend.key.width = unit(2, "line"),
+                               legend.spacing.y = unit(0.1, "cm")))
+
+y_list[[M+1]]<- y_legend
+
+plot_grid(plotlist=y_list)
+
+```
+
+```{r}
+
+## Alternative year plots
+
+year_plot_alt<- function(metric){
+  year<- Year[which(Year$metrics == metric),]
+  year$year<- factor(year$year)
+  
+  if(metric == "R^2"){
+    year$value<- year$value^2 # originally, was just correlation
+  }
+  
+  if(sum(year$alpha != 1) > 0){
+    p<- ggplot(year, aes(x=year, y=value, color=group, shape = data)) + 
+    geom_point(position=position_jitter(w = 0.3, h = 0), aes(alpha=alpha)) +
+    scale_alpha_identity() +
+    ggtitle(metric) + xlab("Year") + ylab("") +
+    scale_color_manual(values=c(as.vector(CBF[6]), as.vector(CBF[2]), as.vector(CBF[7]))) +
+    theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
+  }else{
+    p<- ggplot(year, aes(x=year, y=value, color=group, shape = data)) + 
+    geom_point(position=position_jitter(w = 0.3, h = 0)) + 
+    ggtitle(metric) + xlab("Year") + ylab("") +
+    scale_color_manual(values=c(as.vector(CBF[6]), as.vector(CBF[2]), as.vector(CBF[7]))) +
+    theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
+  }
+  
+  # also adjust y-axis (using correct units); labels for groups
+  
+  return(p)
+}
+
+M<- length(unique(Year$metrics))
+y_list<- vector(mode = "list", length = M+1)
+
+for(m in 1:M){
+  y_list[[m]]<- year_plot_alt(unique(Year$metrics)[m]) + theme(legend.position="none")
+}
+
+y_legend<- get_legend(year_plot_alt(unique(Year$metrics)[1]) +
+                        theme(legend.position = "bottom", legend.box = "vertical",
+                               legend.key.width = unit(2, "line"),
+                               legend.spacing.y = unit(0.1, "cm")))
+
+y_list[[M+1]]<- y_legend
+
+plot_grid(plotlist=y_list)
+
+```
+
+
+```{r}
+
+## State
+
+state_plot<- function(metric){
+  state<- State[which(State$metrics == metric),]
+  # state<- state[which(state$data != "overall"),]
+  
+  if(metric == "R^2"){
+    state$value<- state$value^2 # originally, was just correlation
+  }
+  
+  if(sum(state$alpha != 1) > 0){
+    p<- ggplot(state, aes(x=state, y=value, color=group, shape = data)) + 
+    geom_point(position=position_jitter(w = 0.3, h = 0), aes(alpha=alpha)) +
+    scale_alpha_identity() +
+    ggtitle(metric) + xlab("State") + ylab("") +
+    scale_color_manual(values=c(as.vector(CBF[6]), as.vector(CBF[2]), as.vector(CBF[7]))) +
+    theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
+  }else{
+    p<- ggplot(state, aes(x=state, y=value, color=group, shape = data)) + 
+    geom_point(position=position_jitter(w = 0.3, h = 0)) + 
+    ggtitle(metric) + xlab("State") + ylab("") +
+    scale_color_manual(values=c(as.vector(CBF[6]), as.vector(CBF[2]), as.vector(CBF[7]))) +
+    theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
+  }
+  
+  # also adjust y-axis (using correct units); labels for groups
+  
+  return(p)
+}
+
+M<- length(unique(Year$metrics))
+s_list<- vector(mode = "list", length = M+1)
+
+for(m in 1:M){
+  s_list[[m]]<- state_plot(unique(Year$metrics)[m]) + theme(legend.position="none")
+}
+
+s_legend<- get_legend(state_plot(unique(Year$metrics)[1]) +
+                        theme(legend.position = "bottom", legend.box = "vertical",
+                               legend.key.width = unit(2, "line"),
+                               legend.spacing.y = unit(0.1, "cm")))
+
+s_list[[M+1]]<- s_legend
+
+plot_grid(plotlist=s_list)
+
+```
+
+```{r}
+
+## Season
+
+season_plot<- function(metric){
+  seas<- Season[which(Season$metrics == metric),]
+  # seas<- seas[which(seas$data != "overall"),]
+  
+  if(metric == "R^2"){
+    seas$value<- seas$value^2 # originally, was just correlation
+  }
+  
+  if(sum(seas$alpha != 1) > 0){
+    p<- ggplot(seas, aes(x=season, y=value, color=group, shape = data)) + 
+    geom_point(position=position_jitter(w = 0.3, h = 0), aes(alpha=alpha)) +
+    scale_alpha_identity() +
+    ggtitle(metric) + xlab("Season") + ylab("") +
+    scale_color_manual(values=c(as.vector(CBF[6]), as.vector(CBF[2]), as.vector(CBF[7])))# +
+    # theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
+  }else{
+    p<- ggplot(seas, aes(x=season, y=value, color=group, shape = data)) + 
+    geom_point(position=position_jitter(w = 0.3, h = 0)) + 
+    ggtitle(metric) + xlab("Season") + ylab("") +
+    scale_color_manual(values=c(as.vector(CBF[6]), as.vector(CBF[2]), as.vector(CBF[7])))# +
+    # theme(axis.text.x = element_text(angle = -90, vjust = 0.5))
+  }
+  
+  # also adjust y-axis (using correct units); labels for groups
+  
+  return(p)
+}
+
+M<- length(unique(Year$metrics))
+seas_list<- vector(mode = "list", length = M+1)
+
+for(m in 1:M){
+  seas_list[[m]]<- season_plot(unique(Year$metrics)[m]) + theme(legend.position="none")
+}
+
+seas_legend<- get_legend(season_plot(unique(Year$metrics)[1]) +
+                        theme(legend.position = "bottom", legend.box = "vertical",
+                               legend.key.width = unit(2, "line"),
+                               legend.spacing.y = unit(0.1, "cm")))
+
+seas_list[[M+1]]<- seas_legend
+
+plot_grid(plotlist=seas_list)
+
+
+```
+
+
+Need to keep working on year-season (if we decide to move forward with it)...
+
+```{r}
+
+## Year-Season
+
+ys_plot<- function(metric){
+  ys<- Year.Season[which(Year.Season$Metrics == metric),]
+  ys<- ys[which(ys$data != "overall"),]
+  ys$YS<- apply(ys, MARGIN=1, function(x)paste(x[2], x[1], sep="."))
+  ys$YS<- factor(ys$YS, levels = unique(ys$YS))
+  
+  p<- ggplot(ys, aes(x=YS, y=value, color=group, linetype=data)) + geom_line() +
+    ggtitle(metric) + xlab("Year and Season") + ylab("") +
+    scale_color_manual(values=c(as.vector(CBF[6]), as.vector(CBF[2]), as.vector(CBF[7]))) +
+    theme(axis.text.x = element_text(angle = -90, vjust = 0.5, hjust=1))
+  
+  return(p)
+}
+
+ys_list<- vector(mode = "list", length = M+1)
+
+for(m in 1:M){
+  ys_list[[m]]<- ys_plot(unique(Year$metrics)[m]) + theme(legend.position="none")
+}
+
+ys_legend<- get_legend(ys_plot(unique(Year$metrics)[1]) +
+                        theme(legend.position = "bottom", legend.box = "vertical",
+                               legend.key.width = unit(2, "line"),
+                               legend.spacing.y = unit(0.1, "cm")))
+
+ys_list[[M+1]]<- ys_legend
+
+plot_grid(plotlist=ys_list)
+
+```
+
