@@ -1,0 +1,125 @@
+---
+title: "Scatterplots"
+author: "Ellen Considine"
+date: "3/16/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(cowplot)
+library(stringr)
+
+setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
+valid<- readRDS("Validation_set.rds")
+
+## Capitalizing
+names(valid)[which(names(valid) == "year")]<- "Year"
+names(valid)[which(names(valid) == "season")]<- "Season"
+names(valid)[which(names(valid) == "state")]<- "State"
+
+valid$State<- str_to_title(valid$State)
+
+```
+
+```{r}
+## Make scatterplots with different colors by date and state (including the 17 points where Di is NA):
+
+plot_3_combos<- function(df, col_var, shape_var){
+  
+  if(col_var == "state"){
+    shape_info<- c(rep(16,6), rep(17,5))
+  }else{
+    shape_info<- rep(16,5)
+  }
+  
+  p1<- ggplot(df,
+              aes_string(x="PM2.5", y="PM_grid", color = col_var, shape = shape_var))+
+    geom_point()+geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
+    ylab("Di Estimates")
+  p2<- ggplot(df,
+              aes_string(x="PM2.5",y="Ens_pred", color = col_var, shape = shape_var))+
+    geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
+    ylab("Reid Estimates")
+  
+  if(col_var == "state"){
+    p3<- ggplot(df,
+              aes_string(x="Ens_pred", y="PM_grid", color = col_var, shape = shape_var))+
+    geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
+    ylab("Di Estimates") + guides(shape = "none",
+                                  color = 
+                                   guide_legend(override.aes = 
+                                                  list(shape = shape_info)) )
+    this_leg<- get_legend(p3 +
+                        theme(legend.position = "bottom", legend.box = "vertical",
+                               legend.key.width = unit(0.25, "line"), 
+                              legend.spacing.y = unit(0.1, "cm")))
+  }else{
+    p3<- ggplot(df,
+              aes_string(x="Ens_pred", y="PM_grid", color = col_var, shape = shape_var))+
+    geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
+    ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
+    ylab("Di Estimates") + guides(shape = "none")
+    
+    this_leg<- get_legend(p3 + theme(legend.position = "bottom",
+                                     legend.key.width = unit(1.25, "cm")))
+  }
+  
+  plot_grid(p1 + theme(legend.position="none"),
+            p2 + theme(legend.position="none"),
+            p3 + theme(legend.position="none"),
+            this_leg, nrow = 4, rel_heights = c(1,1,1,0.25))
+}
+
+## Make plots:
+valid$pch<- 16
+valid$pch[which(valid$state > "nevada")]<- 17
+valid$pch<- factor(valid$pch)
+valid$state<- factor(valid$state)
+png("Plots/Scatterplots_state-colors.png", width=350, height=700)
+plot_3_combos(valid, "state", "pch")
+dev.off()
+
+# valid$date<- as.Date(valid$date)
+valid$ones<- factor(1)
+png("Plots/Scatterplots_year-colors.png", width=350, height=700)
+plot_3_combos(valid, "year", "ones")
+dev.off()
+
+```
+
+```{r}
+## Map of validation monitor locations?
+
+library(maps)
+
+states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
+
+west<- map_data("state", region = states)
+valid$Observations<- 1
+Locations<- aggregate(Observations ~ longitude + latitude, valid, sum)
+
+png("Plots/Validation_Monitor_Obs.png", width=500, height=400)
+
+ggplot() + geom_polygon(data=west, aes(x=long, y=lat, group = group), 
+                                  color="black", fill = "white") + 
+  geom_point(data = Locations, aes(x=longitude, y=latitude, 
+                                   color = log(Observations))) +
+  scale_color_gradient(low="white", high="navy blue") +
+  ggtitle("Map of Validation Monitor Observations") + theme_bw() +
+  xlab("Longitude") + ylab("Latitude")
+
+dev.off()
+
+```
+
+
+
