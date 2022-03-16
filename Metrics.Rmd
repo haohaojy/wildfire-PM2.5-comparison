@@ -1,0 +1,227 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+valid<-readRDS('/n/home02/haohaojy/monitor/portable/combine_clean_w.rds')
+medium<- valid[which(valid$PM2.5 >= 12.1),] 
+high<- valid[which(valid$PM2.5 >= 35.5),]
+
+```
+
+```{r}
+mydata<-valid
+#mean bias
+mean(mydata$diff_mo_po,na.rm=T)
+mean(mydata$diff_mo_ct)
+#NMB
+sum(-mydata$diff_mo_po,na.rm=T)/sum(mydata$PM2.5)
+sum(-mydata$diff_mo_ct,na.rm=T)/sum(mydata$PM2.5)
+#Median absolute difference
+median(abs(mydata$diff_mo_po),na.rm=T)
+median(abs(mydata$diff_mo_ct))
+#Mean ratio
+median(mydata$PM_grid/mydata$PM2.5,na.rm=T)
+median(mydata$Ens_pred/mydata$PM2.5,na.rm=T)
+#RMSD
+sqrt(1/nrow(mydata)*sum((mydata$diff_mo_po)^2,na.rm=T))
+sqrt(1/nrow(mydata)*sum((mydata$diff_mo_ct)^2,na.rm=T))
+#R^2
+cor(mydata$PM_grid,mydata$PM2.5,use="complete.obs")^2
+cor(mydata$Ens_pred,mydata$PM2.5,use="complete.obs")^2
+#Spatial 
+Spatial<-aggregate(data=mydata,diff_mo_po~GEOID,FUN=mean)
+colnames(Spatial)<-c('GEOID','PM')
+sqrt((1/(nrow(Spatial)))*(sum((Spatial$PM)^2)))
+
+Spatial<-aggregate(data=mydata,diff_mo_ct~GEOID,FUN=mean)
+colnames(Spatial)<-c('GEOID','PM')
+sqrt((1/(nrow(Spatial)))*(sum((Spatial$PM)^2)))
+#Temporal 
+Temporal<-aggregate(data=mydata,diff_mo_po~date,FUN=mean)
+colnames(Temporal)<-c('date','PM')
+sqrt((1/(nrow(Temporal)))*(sum((Temporal$PM)^2)))
+
+Temporal<-aggregate(data=mydata,diff_mo_ct~date,FUN=mean)
+colnames(Temporal)<-c('date','PM')
+sqrt((1/(nrow(Temporal)))*(sum((Temporal$PM)^2)))
+
+#Spatial R^2
+a<-aggregate(data=mydata,PM2.5~GEOID,FUN=mean)
+colnames(a)=c('GEOID','mo')
+b<-aggregate(data=mydata,Ens_pred~GEOID,FUN=mean)
+colnames(b)=c('GEOID','ct')
+c<-aggregate(data=mydata,PM_grid~GEOID,FUN=mean)
+colnames(c)=c('GEOID','po')
+spatial=merge(a,b,by=c('GEOID'))
+spatial=merge(spatial,c,by=c('GEOID'))
+
+mean_mo<-mean(spatial$mo)
+mean_ct<-mean(spatial$ct)
+mean_grid<-mean(spatial$po)
+(sum((spatial$mo-mean_mo)*(spatial$po-mean_grid)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$po-mean_grid)^2))))
+(sum((spatial$mo-mean_mo)*(spatial$ct-mean_ct)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$ct-mean_ct)^2))))
+#Temporal R^2
+a<-aggregate(data=mydata,PM2.5~date,FUN=mean)
+colnames(a)=c('date','mo')
+b<-aggregate(data=mydata,Ens_pred~date,FUN=mean)
+colnames(b)=c('date','ct')
+c<-aggregate(data=mydata,PM_grid~date,FUN=mean)
+colnames(c)=c('date','po')
+temporal=merge(a,b,by=c('date'))
+temporal=merge(temporal,c,by=c('date'))
+
+mean_mo<-mean(temporal$mo)
+mean_ct<-mean(temporal$ct)
+mean_grid<-mean(temporal$po)
+(sum((temporal$mo-mean_mo)*(temporal$po-mean_grid)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$po-mean_grid)^2))))
+(sum((temporal$mo-mean_mo)*(temporal$ct-mean_ct)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$ct-mean_ct)^2))))
+```
+
+
+```{r}
+mydata<-medium
+#mean bias
+mean(mydata$diff_mo_po,na.rm=T)
+mean(mydata$diff_mo_ct)
+#NMB
+sum(-mydata$diff_mo_po,na.rm=T)/sum(mydata$PM2.5)
+sum(-mydata$diff_mo_ct,na.rm=T)/sum(mydata$PM2.5)
+#Median absolute difference
+median(abs(mydata$diff_mo_po),na.rm=T)
+median(abs(mydata$diff_mo_ct))
+#Mean ratio
+median(mydata$PM_grid/mydata$PM2.5,na.rm=T)
+median(mydata$Ens_pred/mydata$PM2.5,na.rm=T)
+#RMSD
+sqrt(1/nrow(mydata)*sum((mydata$diff_mo_po)^2,na.rm=T))
+sqrt(1/nrow(mydata)*sum((mydata$diff_mo_ct)^2,na.rm=T))
+#R^2
+cor(mydata$PM_grid,mydata$PM2.5,use="complete.obs")^2
+cor(mydata$Ens_pred,mydata$PM2.5,use="complete.obs")^2
+#Spatial RMSD
+Spatial<-aggregate(data=mydata,diff_mo_po~GEOID,FUN=mean)
+colnames(Spatial)<-c('GEOID','PM')
+sqrt((1/(nrow(Spatial)))*(sum((Spatial$PM)^2)))
+
+Spatial<-aggregate(data=mydata,diff_mo_ct~GEOID,FUN=mean)
+colnames(Spatial)<-c('GEOID','PM')
+sqrt((1/(nrow(Spatial)))*(sum((Spatial$PM)^2)))
+#Temporal 
+Temporal<-aggregate(data=mydata,diff_mo_po~date,FUN=mean)
+colnames(Temporal)<-c('date','PM')
+sqrt((1/(nrow(Temporal)))*(sum((Temporal$PM)^2)))
+
+Temporal<-aggregate(data=mydata,diff_mo_ct~date,FUN=mean)
+colnames(Temporal)<-c('date','PM')
+sqrt((1/(nrow(Temporal)))*(sum((Temporal$PM)^2)))
+
+#Spatial R^2
+a<-aggregate(data=mydata,PM2.5~GEOID,FUN=mean)
+colnames(a)=c('GEOID','mo')
+b<-aggregate(data=mydata,Ens_pred~GEOID,FUN=mean)
+colnames(b)=c('GEOID','ct')
+c<-aggregate(data=mydata,PM_grid~GEOID,FUN=mean)
+colnames(c)=c('GEOID','po')
+spatial=merge(a,b,by=c('GEOID'))
+spatial=merge(spatial,c,by=c('GEOID'))
+
+mean_mo<-mean(spatial$mo)
+mean_ct<-mean(spatial$ct)
+mean_grid<-mean(spatial$po)
+(sum((spatial$mo-mean_mo)*(spatial$po-mean_grid)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$po-mean_grid)^2))))
+(sum((spatial$mo-mean_mo)*(spatial$ct-mean_ct)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$ct-mean_ct)^2))))
+#Temporal R^2
+a<-aggregate(data=mydata,PM2.5~date,FUN=mean)
+colnames(a)=c('date','mo')
+b<-aggregate(data=mydata,Ens_pred~date,FUN=mean)
+colnames(b)=c('date','ct')
+c<-aggregate(data=mydata,PM_grid~date,FUN=mean)
+colnames(c)=c('date','po')
+temporal=merge(a,b,by=c('date'))
+temporal=merge(temporal,c,by=c('date'))
+
+mean_mo<-mean(temporal$mo)
+mean_ct<-mean(temporal$ct)
+mean_grid<-mean(temporal$po)
+(sum((temporal$mo-mean_mo)*(temporal$po-mean_grid)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$po-mean_grid)^2))))
+(sum((temporal$mo-mean_mo)*(temporal$ct-mean_ct)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$ct-mean_ct)^2))))
+
+
+```
+
+```{r}
+mydata<-high
+#mean bias
+mean(mydata$diff_mo_po,na.rm=T)
+mean(mydata$diff_mo_ct)
+#NMB
+sum(-mydata$diff_mo_po,na.rm=T)/sum(mydata$PM2.5)
+sum(-mydata$diff_mo_ct,na.rm=T)/sum(mydata$PM2.5)
+#Median absolute difference
+median(abs(mydata$diff_mo_po),na.rm=T)
+median(abs(mydata$diff_mo_ct))
+#Mean ratio
+median(mydata$PM_grid/mydata$PM2.5,na.rm=T)
+median(mydata$Ens_pred/mydata$PM2.5,na.rm=T)
+#RMSD
+sqrt(1/nrow(mydata)*sum((mydata$diff_mo_po)^2,na.rm=T))
+sqrt(1/nrow(mydata)*sum((mydata$diff_mo_ct)^2,na.rm=T))
+#R^2
+cor(mydata$PM_grid,mydata$PM2.5,use="complete.obs")^2
+cor(mydata$Ens_pred,mydata$PM2.5,use="complete.obs")^2
+#Spatial RMSD
+Spatial<-aggregate(data=mydata,diff_mo_po~GEOID,FUN=mean)
+colnames(Spatial)<-c('GEOID','PM')
+sqrt((1/(nrow(Spatial)))*(sum((Spatial$PM)^2)))
+
+Spatial<-aggregate(data=mydata,diff_mo_ct~GEOID,FUN=mean)
+colnames(Spatial)<-c('GEOID','PM')
+sqrt((1/(nrow(Spatial)))*(sum((Spatial$PM)^2)))
+#Temporal 
+Temporal<-aggregate(data=mydata,diff_mo_po~date,FUN=mean)
+colnames(Temporal)<-c('date','PM')
+sqrt((1/(nrow(Temporal)))*(sum((Temporal$PM)^2)))
+
+Temporal<-aggregate(data=mydata,diff_mo_ct~date,FUN=mean)
+colnames(Temporal)<-c('date','PM')
+sqrt((1/(nrow(Temporal)))*(sum((Temporal$PM)^2)))
+
+#Spatial R^2
+a<-aggregate(data=mydata,PM2.5~GEOID,FUN=mean)
+colnames(a)=c('GEOID','mo')
+b<-aggregate(data=mydata,Ens_pred~GEOID,FUN=mean)
+colnames(b)=c('GEOID','ct')
+c<-aggregate(data=mydata,PM_grid~GEOID,FUN=mean)
+colnames(c)=c('GEOID','po')
+spatial=merge(a,b,by=c('GEOID'))
+spatial=merge(spatial,c,by=c('GEOID'))
+
+mean_mo<-mean(spatial$mo)
+mean_ct<-mean(spatial$ct)
+mean_grid<-mean(spatial$po)
+(sum((spatial$mo-mean_mo)*(spatial$po-mean_grid)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$po-mean_grid)^2))))
+(sum((spatial$mo-mean_mo)*(spatial$ct-mean_ct)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$ct-mean_ct)^2))))
+#Temporal R^2
+a<-aggregate(data=mydata,PM2.5~date,FUN=mean)
+colnames(a)=c('date','mo')
+b<-aggregate(data=mydata,Ens_pred~date,FUN=mean)
+colnames(b)=c('date','ct')
+c<-aggregate(data=mydata,PM_grid~date,FUN=mean)
+colnames(c)=c('date','po')
+temporal=merge(a,b,by=c('date'))
+temporal=merge(temporal,c,by=c('date'))
+
+mean_mo<-mean(temporal$mo)
+mean_ct<-mean(temporal$ct)
+mean_grid<-mean(temporal$po)
+(sum((temporal$mo-mean_mo)*(temporal$po-mean_grid)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$po-mean_grid)^2))))
+(sum((temporal$mo-mean_mo)*(temporal$ct-mean_ct)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$ct-mean_ct)^2))))
+
+
+```
