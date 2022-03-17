@@ -72,6 +72,7 @@ metrics<- function(mydata){
               (sum((temporal$mo-mean_mo)*(temporal$ct-mean_ct)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$ct-mean_ct)^2)))))
   
   return(rbind(MB, NMB, MAD, MR, RMSD, R2, Spat.RMSD, Temp.RMSD, Spat.R2, Temp.R2))
+  # Actually, these are spatial and temporal correlations, not R^2
 }
 
 ```
