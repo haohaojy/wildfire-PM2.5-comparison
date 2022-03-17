@@ -94,3 +94,28 @@ medium<- valid[which(valid$PM2.5 >= 12.1),]
 high<- valid[which(valid$PM2.5 >= 35.5),]
 
 ```
+
+```{r}
+# ## Get EPA (AQS) observations from training input:
+# Reid_obs<- readRDS("PM25_inputs.rds")
+# Reid_obs<- Reid_obs[,c("Lat", "Lon", "PM2.5_Obs", "Year", "Date_Local", 
+#                 "Data_Source_Name_Display")]
+# EPA<- str_detect(Reid_obs$Data_Source_Name_Display, "EPA")
+# Reid_obs<- Reid_obs[EPA,]
+# saveRDS(Reid_obs, "EPA_PM25_observations.rds")
+
+## Using EPA combined data set from Jiayuan:
+EPA<- readRDS("EPA_combine.rds")
+EPA$diff_mo_ct=EPA$PM2.5-EPA$Ens_pred
+EPA$diff_mo_po=EPA$PM2.5-EPA$PM_grid
+EPA$diff=EPA$Ens_pred-EPA$PM_grid
+
+EPA$GEOID<- paste0("0", EPA$state_id, "0", EPA$County_FIPS, EPA$Tract_code, "00")
+
+epa<- round( cbind(metrics(EPA), metrics(EPA[which(EPA$PM2.5 >= 12.1),]),
+             metrics(EPA[which(EPA$PM2.5 >= 35.5),])), 2 )
+
+write.csv(epa, "EPA_compare_table.csv")
+
+```
+
