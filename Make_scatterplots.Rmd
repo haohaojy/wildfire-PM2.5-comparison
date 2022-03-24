@@ -104,16 +104,16 @@ library(maps)
 states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
 
 west<- map_data("state", region = states)
-valid$Observations<- 1
-Locations<- aggregate(Observations ~ longitude + latitude, valid, sum)
+valid$Days<- 1
+Locations<- aggregate(Days ~ longitude + latitude, valid, sum)
 
 png("Plots/Validation_Monitor_Obs.png", width=500, height=400)
 
 ggplot() + geom_polygon(data=west, aes(x=long, y=lat, group = group), 
                                   color="black", fill = "white") + 
   geom_point(data = Locations, aes(x=longitude, y=latitude, 
-                                   color = log(Observations))) +
-  scale_color_gradient(low="white", high="navy blue") +
+                                   color = Days)) +
+  scale_color_gradient(low="white", high="navy blue", trans = "log10") +
   ggtitle("Map of Validation Monitor Observations") + theme_bw() +
   xlab("Longitude") + ylab("Latitude")
 
