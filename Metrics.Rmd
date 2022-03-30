@@ -118,4 +118,76 @@ epa<- round( cbind(metrics(EPA), metrics(EPA[which(EPA$PM2.5 >= 12.1),]),
 write.csv(epa, "EPA_compare_table.csv")
 
 ```
+```{r}
+## Function to use when we only have Reid data (for 2017 and 2018):
+
+metrics_justReid<- function(mydata){
+  MB<- mean(-mydata$diff_mo_ct)
+  
+  NMB<- sum(-mydata$diff_mo_ct,na.rm=T)/sum(mydata$PM2.5)
+  
+  MAD<- median(abs(mydata$diff_mo_ct))
+  
+  MR<- median(mydata$Ens_pred/mydata$PM2.5,na.rm=T)
+  
+  RMSD<- sqrt(1/nrow(mydata)*sum((mydata$diff_mo_ct)^2,na.rm=T))
+  
+  R2<- cor(mydata$Ens_pred,mydata$PM2.5,use="complete.obs")^2
+  
+  ## Spatial and Temporal RMSD:
+  Spatial.2<-aggregate(data=mydata,diff_mo_ct~GEOID,FUN=mean)
+  colnames(Spatial.2)<-c('GEOID','PM')
+  Spat.RMSD<- sqrt((1/(nrow(Spatial.2)))*(sum((Spatial.2$PM)^2)))
+  
+  Temporal.2<-aggregate(data=mydata,diff_mo_ct~date,FUN=mean)
+  colnames(Temporal.2)<-c('date','PM')
+  Temp.RMSD<- sqrt((1/(nrow(Temporal.2)))*(sum((Temporal.2$PM)^2)))
+  
+  ## Spatial and Temporal R^2:
+  a<-aggregate(data=mydata,PM2.5~GEOID,FUN=mean)
+  colnames(a)=c('GEOID','mo')
+  b<-aggregate(data=mydata,Ens_pred~GEOID,FUN=mean)
+  colnames(b)=c('GEOID','ct')
+  spatial=merge(a,b,by=c('GEOID'))
+  mean_mo<-mean(spatial$mo)
+  mean_ct<-mean(spatial$ct)
+  
+  Spat.R2<- (sum((spatial$mo-mean_mo)*(spatial$ct-mean_ct)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$ct-mean_ct)^2))))
+  
+  a<-aggregate(data=mydata,PM2.5~date,FUN=mean)
+  colnames(a)=c('date','mo')
+  b<-aggregate(data=mydata,Ens_pred~date,FUN=mean)
+  colnames(b)=c('date','ct')
+  temporal=merge(a,b,by=c('date'))
+  mean_mo<-mean(temporal$mo)
+  mean_ct<-mean(temporal$ct)
+  
+  Temp.R2<- (sum((temporal$mo-mean_mo)*(temporal$ct-mean_ct)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$ct-mean_ct)^2))))
+  
+  return(c(MB, NMB, MAD, MR, RMSD, R2, Spat.RMSD, Temp.RMSD, Spat.R2, Temp.R2))
+  #Actually, these are spatial and temporal correlations, not R^2
+}
+
+
+```
+
+
+```{r}
+
+## Comparing Reid estimates in 2017 and 2018 to the validation data from those years:
+valid<- readRDS("monitor_reid_1718.rds")
+
+valid$diff_mo_ct=valid$PM2.5-valid$Ens_pred
+valid$GEOID<- paste0("0", valid$state_id, "0", valid$County_FIPS, valid$Tract_code, "00")
+
+reid_17.18<- round( cbind(metrics_justReid(valid), 
+                          metrics_justReid(valid[which(valid$PM2.5 >= 12.1),]),
+                          metrics_justReid(valid[which(valid$PM2.5 >= 35.5),])), 2 )
+
+write.csv(reid_17.18, "Reid_17-18_compare.csv")
+
+```
+
+
+
 
