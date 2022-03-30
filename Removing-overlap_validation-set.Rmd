@@ -1,0 +1,88 @@
+---
+title: "EDA by Ellen"
+author: "Ellen Considine"
+date: "2/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(cowplot)
+library(xtable)
+states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
+```
+```{r}
+# ### PM2.5 obs used in training Reid model:
+# 
+# # Reid_obs<- readRDS("PM25_input_locations-dates.rds")
+# Reid_obs<- readRDS("PM25_inputs.rds")
+# Reid_obs<- Reid_obs[,c("Lat", "Lon", "PM2.5_Obs", "Year", "Date_Local", 
+#                "Data_Source_Name_Display")]
+# 
+# 
+# ## For future reference, here is how to make a latex table (to copy & paste):
+# 
+# xtable(head(Reid_obs))
+
+```
+```{r}
+# ### PM2.5 in our validation set (from Airsis and WRCC):
+# 
+# setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
+# validation<- readRDS("combine.rds")
+# 
+# dim(validation) # 28997    28
+# table(validation$dataset) 
+# # airsis   wrcc 
+# #  22899   6098 
+
+```
+
+```{r}
+
+# ## Removing overlap between the datasets:
+# validation$date<- as.Date(validation$date, format = "%Y-%m-%d")
+# Reid_obs$Date<- as.Date(Reid_obs$Date_Local, format = "%Y-%m-%d")
+# Reid_obs$Date_Local<- NULL
+# 
+# validation$row_id<- 1:dim(validation)[1]
+# 
+# overlap<- inner_join(validation, Reid_obs, by = c("longitude" = "Lon",
+#                                                   "latitude" = "Lat",
+#                                                   "date" = "Date"))
+# table(overlap$dataset)
+# # airsis   wrcc 
+# #    376      3
+# 
+# table(overlap$Data_Source_Name_Display)
+# # CARB Mobile Monitor  Fire Cache Smoke Monitor (DRI) 
+# #                  370                              9
+# table(overlap$state)
+# # california      idaho     nevada     oregon washington 
+# #        365          6          3          2          3
+# 
+# v_diffs<- overlap$PM2.5 - overlap$PM2.5_Obs
+# summary(v_diffs)
+# overlap[which(abs(v_diffs) > 5),c("date", "PM2.5", "PM2.5_Obs", "Data_Source_Name_Display")] # 54: 22 where validation > Reid_obs, 32 where less than
+# 
+# valid<- validation[which(!validation$row_id %in% overlap$row_id),] # 28618 obs
+# 
+# saveRDS(valid, "Validation_set.rds")
+valid<- readRDS("Validation_set.rds")
+
+## Note Di NA's before proceeding:
+di_na_pos<- which(is.na(valid$PM_grid)) # 17 obs
+
+summary(valid$PM2.5)
+summary(valid$PM_grid[-di_na_pos])
+summary(valid$Ens_pred)
+```
+
+
+
