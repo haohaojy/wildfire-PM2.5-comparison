@@ -11,6 +11,7 @@
 * AQI_table.R -- Calculating the AQI classification results
 
 ## Data processing:
+* Note: though the validation monitor observations were obtained using the R package PWFSLSmoke, we actually were sent the data resulting from this query by a member of the AirFire research team.
 * Removing-overlap_validation-set.Rmd -- Removes overlap in the validation observations with observations used to train the Reid model
 * combine.rds data
 _Colnames reference:_
