@@ -12,6 +12,9 @@
 
 ## Data processing:
 * Note: though the validation monitor observations were obtained using the R package PWFSLSmoke, we actually were sent the data resulting from this query by a member of the AirFire research team.
+* Aggregate_Reid.Rmd -- Aggregates the duplicated observations in Reid data.
+* Di_Reid.Rmd --Subset Di data in 11 western states and combine Reid data with its nearest Di point from 2008 to 2016.
+* Monitor_combine.Rmd -- Combine monitor data with its nearest Reid data, which has been combined with Di data. Also provides code of combining monitor data with its nearest Di data.
 * Removing-overlap_validation-set.Rmd -- Removes overlap in the validation observations with observations used to train the Reid model
 * combine.rds data
 _Colnames reference:_
