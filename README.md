@@ -13,7 +13,7 @@
 ## Data processing:
 * Note: though the validation monitor observations were obtained using the R package PWFSLSmoke, we actually were sent the data resulting from this query by a member of the AirFire research team.
 * Reid_processing.Rmd -- Aggregates the duplicated observations in Reid data.
-* Monitor_processing.Rmd --Combine Airsis and WRCC data. Data points from each validation set are removed (separately because they are over 1,000 and if they overlap with the Reid training data).
+* Monitor_processing.Rmd --Combines Airsis and WRCC data. Data points from each validation set are removed (separately because they are over 1,000 and if they overlap with the Reid training data).
 * Nearest points.Rmd -- Uses knnx function to find the pair of nearest points of two datasets and then combin them. 
 * combine.rds data
 _Colnames reference:_
