@@ -3,20 +3,18 @@ library(xtable)
 # install_github("NSAPH-Software/NSAPHutils", ref="develop")
 library(NSAPHutils)
 
-setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
-
-data<- readRDS("Validation_set.rds")
+data<- readRDS("Merged_monitor_Di_Reid_with_CMAQ.rds")
 Data<- data[,c("date", "year", "season", "state", "GEOID", 
-               "PM2.5", "PM_grid", "Ens_pred")]
+               "PM2.5", "PM_Di", "PM_Reid")]
 
 ## Apply aqi equation from NSAPHutils:
 
 Data$Monitor_class<- aqi_equation("PM2.5", Data$PM2.5)$Color
-Data$Reid_class<- aqi_equation("PM2.5", Data$Ens_pred)$Color
+Data$Reid_class<- aqi_equation("PM2.5", Data$PM_Reid)$Color
 
-di_na_pos<- which(is.na(Data$PM_grid))
+di_na_pos<- which(is.na(Data$PM_Di))
 Data$Di_class<- NA
-Data$Di_class[-di_na_pos]<- aqi_equation("PM2.5", Data$PM_grid[-di_na_pos])$Color
+Data$Di_class[-di_na_pos]<- aqi_equation("PM2.5", Data$PM_Di[-di_na_pos])$Color
 
 color_order<- c("Green", "Yellow", "Orange", "Red", "Purple", "Maroon")
 Data$Monitor_class<- as.numeric(factor(Data$Monitor_class, levels = color_order))
@@ -43,6 +41,7 @@ Results<- data.frame(Comparison, Misclassified, Underclassified,
 rm(list=setdiff(ls(),c("Data", "Results")))
 save.image(file = "AQI_calcs.RData")
 
+xtable(Results[,2:6]*100)
 
 
 
