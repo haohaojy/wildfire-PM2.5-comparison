@@ -4,6 +4,11 @@
 *.csv
 *.RData
 
+# Image files
+Plots/*
+*.png
+*.PNG
+
 # History files
 .Rhistory
 .Rapp.history

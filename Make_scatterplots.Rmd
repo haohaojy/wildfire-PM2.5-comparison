@@ -15,8 +15,7 @@ library(ggplot2)
 library(cowplot)
 library(stringr)
 
-setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
-valid<- readRDS("Validation_set.rds")
+valid<- readRDS("Merged_monitor_Di_Reid_with_CMAQ.rds")
 
 ## Capitalizing
 names(valid)[which(names(valid) == "year")]<- "Year"
@@ -32,26 +31,26 @@ valid$State<- str_to_title(valid$State)
 
 plot_3_combos<- function(df, col_var, shape_var){
   
-  if(col_var == "state"){
+  if(col_var == "State"){
     shape_info<- c(rep(16,6), rep(17,5))
   }else{
     shape_info<- rep(16,5)
   }
   
   p1<- ggplot(df,
-              aes_string(x="PM2.5", y="PM_grid", color = col_var, shape = shape_var))+
+              aes_string(x="PM2.5", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+geom_abline(intercept=0,slope=1,color='red')+
     ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
     ylab("Di Estimates")
   p2<- ggplot(df,
-              aes_string(x="PM2.5",y="Ens_pred", color = col_var, shape = shape_var))+
+              aes_string(x="PM2.5",y="PM_Reid", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
     ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
     ylab("Reid Estimates")
   
-  if(col_var == "state"){
+  if(col_var == "State"){
     p3<- ggplot(df,
-              aes_string(x="Ens_pred", y="PM_grid", color = col_var, shape = shape_var))+
+              aes_string(x="PM_Reid", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
     ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
     ylab("Di Estimates") + guides(shape = "none",
@@ -64,7 +63,7 @@ plot_3_combos<- function(df, col_var, shape_var){
                               legend.spacing.y = unit(0.1, "cm")))
   }else{
     p3<- ggplot(df,
-              aes_string(x="Ens_pred", y="PM_grid", color = col_var, shape = shape_var))+
+              aes_string(x="PM_Reid", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
     ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
     ylab("Di Estimates") + guides(shape = "none")
@@ -81,17 +80,17 @@ plot_3_combos<- function(df, col_var, shape_var){
 
 ## Make plots:
 valid$pch<- 16
-valid$pch[which(valid$state > "nevada")]<- 17
+valid$pch[which(valid$State > "nevada")]<- 17
 valid$pch<- factor(valid$pch)
-valid$state<- factor(valid$state)
+valid$State<- factor(valid$State)
+
 png("Plots/Scatterplots_state-colors.png", width=350, height=700)
-plot_3_combos(valid, "state", "pch")
+plot_3_combos(valid, "State", "pch")
 dev.off()
 
-# valid$date<- as.Date(valid$date)
 valid$ones<- factor(1)
 png("Plots/Scatterplots_year-colors.png", width=350, height=700)
-plot_3_combos(valid, "year", "ones")
+plot_3_combos(valid, "Year", "ones")
 dev.off()
 
 ```

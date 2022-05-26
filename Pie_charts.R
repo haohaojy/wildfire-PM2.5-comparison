@@ -2,8 +2,8 @@ library(ggplot2)
 library(cowplot)
 library(stringr)
 
-setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
-valid<- readRDS("Validation_set.rds")
+valid<- readRDS("Merged_monitor_Di_Reid_with_CMAQ.rds")
+
 valid$stateCode<- as.factor(valid$stateCode)
 valid$season<- str_to_title(valid$season)
 valid$season<- as.factor(valid$season)
