@@ -15,73 +15,160 @@ library(lubridate)
 library(ggplot2)
 library(cowplot)
 library(xtable)
-states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
-```
-```{r}
-# ### PM2.5 obs used in training Reid model:
-# 
-# # Reid_obs<- readRDS("PM25_input_locations-dates.rds")
-# Reid_obs<- readRDS("PM25_inputs.rds")
-# Reid_obs<- Reid_obs[,c("Lat", "Lon", "PM2.5_Obs", "Year", "Date_Local", 
-#                "Data_Source_Name_Display")]
-# 
-# 
-# ## For future reference, here is how to make a latex table (to copy & paste):
-# 
-# xtable(head(Reid_obs))
-
-```
-```{r}
-# ### PM2.5 in our validation set (from Airsis and WRCC):
-# 
-# setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
-# validation<- readRDS("combine.rds")
-# 
-# dim(validation) # 28997    28
-# table(validation$dataset) 
-# # airsis   wrcc 
-# #  22899   6098 
-
+library(stringr)
 ```
 
 ```{r}
+#### Read in the datasets
 
-# ## Removing overlap between the datasets:
-# validation$date<- as.Date(validation$date, format = "%Y-%m-%d")
-# Reid_obs$Date<- as.Date(Reid_obs$Date_Local, format = "%Y-%m-%d")
-# Reid_obs$Date_Local<- NULL
-# 
-# validation$row_id<- 1:dim(validation)[1]
-# 
-# overlap<- inner_join(validation, Reid_obs, by = c("longitude" = "Lon",
-#                                                   "latitude" = "Lat",
-#                                                   "date" = "Date"))
-# table(overlap$dataset)
-# # airsis   wrcc 
-# #    376      3
-# 
-# table(overlap$Data_Source_Name_Display)
-# # CARB Mobile Monitor  Fire Cache Smoke Monitor (DRI) 
-# #                  370                              9
-# table(overlap$state)
-# # california      idaho     nevada     oregon washington 
-# #        365          6          3          2          3
-# 
-# v_diffs<- overlap$PM2.5 - overlap$PM2.5_Obs
-# summary(v_diffs)
-# overlap[which(abs(v_diffs) > 5),c("date", "PM2.5", "PM2.5_Obs", "Data_Source_Name_Display")] # 54: 22 where validation > Reid_obs, 32 where less than
-# 
-# valid<- validation[which(!validation$row_id %in% overlap$row_id),] # 28618 obs
-# 
-# saveRDS(valid, "Validation_set.rds")
-valid<- readRDS("Validation_set.rds")
+## PM2.5 obs used in training the Reid model:
 
-## Note Di NA's before proceeding:
-di_na_pos<- which(is.na(valid$PM_grid)) # 17 obs
+Reid_obs<- readRDS("PM25_inputs.rds")
+Reid_obs<- Reid_obs[,c("Lat", "Lon", "PM2.5_Obs", "Year", "Date_Local",
+               "Data_Source_Name_Display")]
 
-summary(valid$PM2.5)
-summary(valid$PM_grid[-di_na_pos])
-summary(valid$Ens_pred)
+## PM2.5 in our validation set (from Airsis and WRCC):
+
+di_valid<- readRDS("monitor_di_2008_2016.rds")
+reid_valid<- readRDS("monitor_reid_wo_CMAQ.rds")
+
+```
+
+
+```{r}
+
+#### Removing overlap between the datasets:
+
+di_valid$date<- as.Date(di_valid$date, format = "%Y-%m-%d")
+reid_valid$date<- as.Date(reid_valid$date, format = "%Y-%m-%d")
+
+Reid_obs$Date<- as.Date(Reid_obs$Date_Local, format = "%Y-%m-%d")
+Reid_obs$Date_Local<- NULL
+
+di_valid$row_id<- 1:nrow(di_valid)
+reid_valid$row_id<- 1:nrow(reid_valid)
+
+di_valid[,c("Lon", "Lat",
+            "longitude", "latitude")]<- apply(di_valid[,c("Lon", "Lat", 
+                                                          "longitude", "latitude")],
+                                              MARGIN = 2, as.numeric)
+
+di_valid$longitude<- round(di_valid$longitude, 4)
+di_valid$latitude<- round(di_valid$latitude, 5)
+reid_valid$longitude<- round(reid_valid$longitude, 4)
+reid_valid$latitude<- round(reid_valid$latitude, 5)
+Reid_obs$Lon<- round(Reid_obs$Lon, 4)
+Reid_obs$Lat<- round(Reid_obs$Lat, 5)
+
+di_overlap<- inner_join(di_valid, Reid_obs, by = c("longitude" = "Lon", 
+                                                   "latitude" = "Lat",
+                                                  "date" = "Date"))
+
+reid_overlap<- inner_join(reid_valid, Reid_obs, by = c("longitude" = "Lon",
+                                                  "latitude" = "Lat",
+                                                  "date" = "Date"))
+
+# table(di_overlap$Data_Source_Name_Display)
+# table(di_overlap$state)
+# 
+# table(reid_overlap$Data_Source_Name_Display)
+# table(reid_overlap$stateCode)
+
+di_valid<- di_valid[which(!di_valid$row_id %in% di_overlap$row_id),] # 26875 obs
+reid_valid<- reid_valid[which(!reid_valid$row_id %in% reid_overlap$row_id),] # 41179 obs
+
+saveRDS(di_valid, "Monitors_Di_validation.rds")
+saveRDS(reid_valid, "Monitors_Reid_wo_CMAQ.rds")
+
+
+## Now for the previously-processed Reid with CMAQ estimates (28618 obs)
+
+reid_16<- readRDS("Validation_set.rds")
+reid_16$longitude<- round(reid_16$longitude, 4)
+reid_16$latitude<- round(reid_16$latitude, 5)
+reid_16$row_id<- 1:nrow(reid_16)
+
+reid_16_overlap<- inner_join(reid_16, Reid_obs, by = c("longitude" = "Lon",
+                                                  "latitude" = "Lat",
+                                                  "date" = "Date"))
+reid_16_valid<- reid_16[which(!reid_16$row_id %in% reid_16_overlap$row_id),] # 26863 obs
+
+```
+
+```{r}
+
+#### Merge and clean the final datasets
+
+## Merge 2008-2016 data with CMAQ:
+
+Reid_16<- reid_16[,c("date", "longitude", "latitude", "PM2.5",
+                     "DF_Lon", "DF_Lat", "Ens_pred", "diff_mo_ct",
+                     "stateCode", "state", "GEOID", "dataset",
+                     "month", "year", "season")]
+names(Reid_16)<- c("date", "longitude", "latitude", "PM2.5",
+                     "Lon_Reid", "Lat_Reid", "PM_Reid", "diff_mo_ct",
+                     "stateCode", "state", "GEOID", "dataset",
+                     "month", "year", "season")
+
+Di_16<- di_valid[,c("date", "longitude", "latitude", 
+                    "PM2.5", "PM_Di")]
+Di_16$Lon_Di<- di_valid$Lon
+Di_16$Lat_Di<- di_valid$Lat
+Di_16$dataset<- di_valid$group
+Di_16[,c("longitude", "latitude", "PM2.5", 
+                    "Lon_Di", "Lat_Di", "PM_Di")]<- apply(Di_16[,c("longitude", 
+                                                             "latitude", "PM2.5", 
+                                                            "Lon_Di", "Lat_Di", "PM_Di")],
+                                                    MARGIN = 2, as.numeric)
+
+Di_16$PM2.5<- round(Di_16$PM2.5, 3)
+Reid_16$PM2.5<- round(Reid_16$PM2.5, 3)
+
+All_16<- inner_join(Reid_16, Di_16) # 26763 obs -- missing 17 obs from Di
+
+# All_16<- full_join(Reid_16, Di_16) # 28730 obs -- missing 112 obs from Reid, 1872 from Di
+
+All_16$diff_mo_po<- All_16$PM2.5 - All_16$PM_Di
+
+saveRDS(All_16, "Merged_monitor_Di_Reid_with_CMAQ.rds")
+
+
+## Clean 2008-2018 data without CMAQ:
+
+Reid_valid<- reid_valid[,c("date", "longitude", "latitude", "PM2.5",
+                     "DF_Lon", "DF_Lat", "Ens_pred", "group")]
+
+reid_valid$state_id<- str_pad(reid_valid$state_id, 2, pad = "0")
+reid_valid$County_FIPS<- str_pad(reid_valid$County_FIPS, 3, pad = "0")
+reid_valid$Tract_code<- str_pad(reid_valid$Tract_code, 6, pad = "0")
+Reid_valid$GEOID<- paste0(reid_valid$state_id, reid_valid$County_FIPS, 
+                          reid_valid$Tract_code)
+
+names(Reid_valid)<- c("date", "longitude", "latitude", "PM2.5",
+                     "Lon_Reid", "Lat_Reid", "PM_Reid", "dataset",
+                     "GEOID")
+Reid_valid$diff_mo_ct<- Reid_valid$PM2.5 - Reid_valid$PM_Reid
+
+saveRDS(Reid_valid, "Merged_monitor_Reid_without_CMAQ.rds")
+
+
+## Clean EPA-monitor-based dataset (2008-2016):
+
+epa<- readRDS("EPA_reid_n_di_08-18.rds") # actually just through 2016
+
+EPA<- epa[c("date", "Lon", "Lat", "PM2.5", "DF_Lon", "DF_Lat", "Ens_pred",
+            "Lon_Di", "Lat_Di", "PM_Di")]
+
+epa$state_id<- str_pad(epa$state_id, 2, pad = "0")
+epa$County_FIPS<- str_pad(epa$County_FIPS, 3, pad = "0")
+epa$Tract_code<- str_pad(epa$Tract_code, 6, pad = "0")
+EPA$GEOID<- paste0(epa$state_id, epa$County_FIPS, epa$Tract_code)
+
+names(EPA)<- c("date", "Lon", "Lat", "PM2.5", "Lon_Reid", "Lat_Reid", "PM_Reid",
+            "Lon_Di", "Lat_Di", "PM_Di", "GEOID")
+
+saveRDS(EPA, "Merged_EPA_Di_Reid_with_CMAQ.rds")
+
 ```
 
 
