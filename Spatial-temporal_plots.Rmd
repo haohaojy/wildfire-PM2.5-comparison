@@ -16,8 +16,6 @@ library(stringr)
 
 CBF<- palette.colors()
 
-setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
-
 data<- readRDS("Spatio-temporal_results.rds")
 
 Year<- data[[1]]
@@ -30,11 +28,11 @@ Season$Var<- str_to_title(Season$Var)
 
 ```{r}
 
-## Exploratory
-
-length(Year[which(Year$number < 10),"number"]) # 6 wo, 12 w
-length(State[which(State$number < 10),"number"]) # 33 wo, 66 w
-length(Season[which(Season$number < 10),"number"]) # 0 wo and w
+# ## Exploratory
+# 
+# length(Year[which(Year$number < 10),"number"]) # 6 wo, 12 w
+# length(State[which(State$number < 10),"number"]) # 33 wo, 66 w
+# length(Season[which(Season$number < 10),"number"]) # 0 wo and w
 
 ```
 

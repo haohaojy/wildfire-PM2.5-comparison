@@ -34,13 +34,13 @@ ST<- function(data, var, l, group){
   
   if(group == 1){
     subdata$pm1<- subdata[,"PM2.5"]
-    subdata$pm2<- subdata[,"Ens_pred"]
+    subdata$pm2<- subdata[,"PM_Reid"]
   }else if (group == 2){
     subdata$pm1<- subdata[,"PM2.5"]
-    subdata$pm2<- subdata[,"PM_grid"]
+    subdata$pm2<- subdata[,"PM_Di"]
   }else{
-    subdata$pm1<- subdata[,"PM_grid"]
-    subdata$pm2<- subdata[,"Ens_pred"]
+    subdata$pm1<- subdata[,"PM_Di"]
+    subdata$pm2<- subdata[,"PM_Reid"]
   }
   
   ## RMSD
@@ -116,8 +116,7 @@ apply_ST<- function(data, var){
   return(Results[-1,])
 }
 
-setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
-valid<- readRDS("Validation_set.rds")
+valid<- readRDS("Merged_monitor_Di_Reid_with_CMAQ.rds")
 
 Year<- apply_ST(valid, "year")
 State<- apply_ST(valid, "stateCode")
@@ -178,5 +177,32 @@ DvR_apply<- function(df, tol){
 DvR_apply(Year, 0.1)
 DvR_apply(State, 0.1)
 DvR_apply(Season, 0.1)
+
+## Check overall percentages:
+nrow(DvR_apply(Year, 0)) # 56
+nrow(DvR_apply(State, 0)) # 30
+nrow(DvR_apply(Season, 0)) # 34
+
+nrow(DvR_apply(Year, -10000)) # 324
+nrow(DvR_apply(State, -10000)) # 354
+nrow(DvR_apply(Season, -10000)) # 144
+
+56/324 # 0.173
+30/354 # 0.085
+34/144 # 0.236
+
+(56 + 30 + 34) / (324 + 354 + 144) # 0.146
+
+## Check percentages using a tolerance of 5%:
+nrow(DvR_apply(Year, 0.05)) # 50
+nrow(DvR_apply(State, 0.05)) # 26
+nrow(DvR_apply(Season, 0.05)) # 18
+
+50/324 # 0.154
+26/354 # 0.073
+18/144 # 0.125
+
+(50 + 26 + 18) / (324 + 354 + 144) # 0.114
+
 
 ```
