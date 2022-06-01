@@ -16,16 +16,7 @@
 *Note: though the validation monitor observations were obtained using the R package PWFSLSmoke, we actually were sent the data resulting from this query by a member of the AirFire research team.*
 * Reid_processing.Rmd -- Aggregates any duplicated observations in the Reid dataset.
 * Monitor_processing.Rmd -- Combines Airsis and WRCC (smoke validation monitor) data. Data points from this validation set are removed if they are over 1,000 $\mu g / m^3$ or if they overlap with the Reid training observations. Later, we determined that this was insufficient for removing all overlapping points, so the final cleaning steps are shown in Removing-overlap_validation-set.Rmd
-* Nearest points.Rmd -- For each monitor observation, finds the nearest Reid and Di observations. 
-* combine.rds data
-_Colnames reference:_
-For WRCC/Airsis data: "date"        "monitor"     "PM2.5"      "longitude"   "latitude"    "timezone"   "stateCode"   "monitorType" 
-
-"X2": The distance between monitor and its nearest Reid data         
-
-For Reid data: "DF_Lon"      "DF_Lat"  "County_FIPS" "Tract_code"  "Ens_pred"    "state"       "stateID"     "dataset"         
-For Di data : "Lon"         "Lat"         "PM_grid"  "state_id" 
-  
-"diff_mo_ct" monitor-Reid 
-"diff_mo_po" monitor-Di
-"diff"  Reid-Di    
+* Nearest points.Rmd -- For each monitor observation, finds the nearest Reid and Di observations.
+* Add_covariates.R -- Making sure the spatial and temporal covariates (e.g. "GEOID" and "warm season") were filled in and consistent throughout the main validation set (2008-2016).
+* combine.rds data -- oldest script, used to merge the Reid data and validation monitor observations
+ 
