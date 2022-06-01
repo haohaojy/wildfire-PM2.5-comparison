@@ -16,10 +16,14 @@ library(ggplot2)
 library(cowplot)
 library(xtable)
 library(stringr)
+
+## Set working directory to GitHub repo folder
+
+
 ```
 
 ```{r}
-#### Read in the datasets
+#### Read in the datasets...
 
 ## PM2.5 obs used in training the Reid model:
 
@@ -27,17 +31,17 @@ Reid_obs<- readRDS("PM25_inputs.rds")
 Reid_obs<- Reid_obs[,c("Lat", "Lon", "PM2.5_Obs", "Year", "Date_Local",
                "Data_Source_Name_Display")]
 
-## PM2.5 in our validation set (from Airsis and WRCC):
+## Di and Reid estimates nearest to each PM2.5 observation in our validation set (from Airsis and WRCC):
 
 di_valid<- readRDS("monitor_di_2008_2016.rds") # 29034
-reid_valid<- readRDS("monitor_reid_wo_CMAQ.rds") # 44553
+reid_valid<- readRDS("monitor_reid_wo_CMAQ.rds") # 44553 (without CMAQ: 2008-2018)
 
 ```
 
 
 ```{r}
 
-#### Removing overlap between the datasets:
+#### Removing overlap between each set of estimates with the Reid training data:
 
 di_valid$date<- as.Date(di_valid$date, format = "%Y-%m-%d")
 reid_valid$date<- as.Date(reid_valid$date, format = "%Y-%m-%d")
@@ -83,7 +87,7 @@ saveRDS(di_valid, "Monitors_Di_validation.rds")
 saveRDS(reid_valid, "Monitors_Reid_wo_CMAQ.rds")
 
 
-## Now for the previously-processed Reid with CMAQ estimates (28618 obs)
+## Now for the Reid-with-CMAQ estimates (2008-2016):
 
 reid_16<- readRDS("combine.rds") # readRDS("Validation_set.rds")
 reid_16$date<- as.Date(reid_16$date, format = "%Y-%m-%d")
@@ -100,9 +104,9 @@ reid_16_valid<- reid_16[which(!reid_16$row_id %in% reid_16_overlap$row_id),] # 2
 
 ```{r}
 
-#### Merge and clean the final datasets
+#### Merge and clean the final datasets...
 
-## Merge 2008-2016 data with CMAQ:
+## Merge 2008-2016 data (Di and Reid with CMAQ):
 
 Reid_16<- reid_16[,c("date", "longitude", "latitude", "PM2.5",
                      "DF_Lon", "DF_Lat", "Ens_pred", "diff_mo_ct",
@@ -135,13 +139,12 @@ apply(All_16, MARGIN = 2, function(y) sum(is.na(y))) # missing 112 obs from Reid
 summary(All_16[which(is.na(All_16$PM_Reid)), "PM2.5"])
 summary(All_16[which(is.na(All_16$PM_Di)), "PM2.5"])
 
-#### Adding necessary variables:
 All_16$diff_mo_po<- All_16$PM2.5 - All_16$PM_Di
 
 saveRDS(All_16, "Merged_monitor_Di_Reid_with_CMAQ.rds")
 
 
-## Clean 2008-2018 data without CMAQ:
+## Clean 2008-2018 data (Reid estimates without CMAQ + monitor obs):
 
 Reid_valid<- reid_valid[,c("date", "longitude", "latitude", "PM2.5",
                      "DF_Lon", "DF_Lat", "Ens_pred", "group")]
