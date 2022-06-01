@@ -29,8 +29,8 @@ Reid_obs<- Reid_obs[,c("Lat", "Lon", "PM2.5_Obs", "Year", "Date_Local",
 
 ## PM2.5 in our validation set (from Airsis and WRCC):
 
-di_valid<- readRDS("monitor_di_2008_2016.rds")
-reid_valid<- readRDS("monitor_reid_wo_CMAQ.rds")
+di_valid<- readRDS("monitor_di_2008_2016.rds") # 29034
+reid_valid<- readRDS("monitor_reid_wo_CMAQ.rds") # 44553
 
 ```
 
@@ -49,8 +49,10 @@ di_valid$row_id<- 1:nrow(di_valid)
 reid_valid$row_id<- 1:nrow(reid_valid)
 
 di_valid[,c("Lon", "Lat",
-            "longitude", "latitude")]<- apply(di_valid[,c("Lon", "Lat", 
-                                                          "longitude", "latitude")],
+            "longitude", "latitude",
+            "PM2.5")]<- apply(di_valid[,c("Lon", "Lat", 
+                                                          "longitude", "latitude",
+                                          "PM2.5")],
                                               MARGIN = 2, as.numeric)
 
 di_valid$longitude<- round(di_valid$longitude, 4)
@@ -74,7 +76,7 @@ reid_overlap<- inner_join(reid_valid, Reid_obs, by = c("longitude" = "Lon",
 # table(reid_overlap$Data_Source_Name_Display)
 # table(reid_overlap$stateCode)
 
-di_valid<- di_valid[which(!di_valid$row_id %in% di_overlap$row_id),] # 26875 obs
+di_valid<- di_valid[which(!di_valid$row_id %in% di_overlap$row_id),] # 26899 obs
 reid_valid<- reid_valid[which(!reid_valid$row_id %in% reid_overlap$row_id),] # 41179 obs
 
 saveRDS(di_valid, "Monitors_Di_validation.rds")
@@ -83,7 +85,8 @@ saveRDS(reid_valid, "Monitors_Reid_wo_CMAQ.rds")
 
 ## Now for the previously-processed Reid with CMAQ estimates (28618 obs)
 
-reid_16<- readRDS("Validation_set.rds")
+reid_16<- readRDS("combine.rds") # readRDS("Validation_set.rds")
+reid_16$date<- as.Date(reid_16$date, format = "%Y-%m-%d")
 reid_16$longitude<- round(reid_16$longitude, 4)
 reid_16$latitude<- round(reid_16$latitude, 5)
 reid_16$row_id<- 1:nrow(reid_16)
@@ -124,10 +127,15 @@ Di_16[,c("longitude", "latitude", "PM2.5",
 Di_16$PM2.5<- round(Di_16$PM2.5, 3)
 Reid_16$PM2.5<- round(Reid_16$PM2.5, 3)
 
-All_16<- inner_join(Reid_16, Di_16) # 26763 obs -- missing 17 obs from Di
+# All_16<- inner_join(Reid_16, Di_16) # 26787 obs
+# apply(All_16, MARGIN = 2, function(y) sum(is.na(y))) # missing 17 obs from Di
 
-# All_16<- full_join(Reid_16, Di_16) # 28730 obs -- missing 112 obs from Reid, 1872 from Di
+All_16<- full_join(Reid_16, Di_16) # 29109 obs 
+apply(All_16, MARGIN = 2, function(y) sum(is.na(y))) # missing 112 obs from Reid, 2210 from Di (in addition to 17 above)
+summary(All_16[which(is.na(All_16$PM_Reid)), "PM2.5"])
+summary(All_16[which(is.na(All_16$PM_Di)), "PM2.5"])
 
+#### Adding necessary variables:
 All_16$diff_mo_po<- All_16$PM2.5 - All_16$PM_Di
 
 saveRDS(All_16, "Merged_monitor_Di_Reid_with_CMAQ.rds")
@@ -166,10 +174,9 @@ EPA$GEOID<- paste0(epa$state_id, epa$County_FIPS, epa$Tract_code)
 
 names(EPA)<- c("date", "Lon", "Lat", "PM2.5", "Lon_Reid", "Lat_Reid", "PM_Reid",
             "Lon_Di", "Lat_Di", "PM_Di", "GEOID")
+apply(epa, MARGIN =2, function(y) sum(is.na(y))) # 56 missing Di estimates
 
 saveRDS(EPA, "Merged_EPA_Di_Reid_with_CMAQ.rds")
 
 ```
-
-
 
