@@ -116,13 +116,26 @@ apply_ST<- function(data, var){
   return(Results[-1,])
 }
 
-valid<- readRDS("Merged_monitor_Di_Reid_with_CMAQ.rds")
+valid<- readRDS("Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
 
 Year<- apply_ST(valid, "year")
 State<- apply_ST(valid, "stateCode")
 Season<- apply_ST(valid, "season")
+WS<- apply_ST(valid, "Warm_season")
 
-saveRDS(list(Year, State, Season), "Spatio-temporal_results.rds")
+saveRDS(list(Year, State, Season, WS), "Spatio-temporal_results.rds")
+
+## When we don't include points where either dataset is missing:
+
+na<- which(is.na(valid$PM_Di)|is.na(valid$PM_Reid))
+valid<- valid[-na,]
+
+Year<- apply_ST(valid, "year")
+State<- apply_ST(valid, "stateCode")
+Season<- apply_ST(valid, "season")
+WS<- apply_ST(valid, "Warm_season")
+
+saveRDS(list(Year, State, Season, WS), "Spatio-temporal_results_No-missing.rds")
 
 ```
 
@@ -179,30 +192,22 @@ DvR_apply(State, 0.1)
 DvR_apply(Season, 0.1)
 
 ## Check overall percentages:
-nrow(DvR_apply(Year, 0)) # 56
-nrow(DvR_apply(State, 0)) # 30
-nrow(DvR_apply(Season, 0)) # 34
+nrow(DvR_apply(Year, 0)) # 64
+nrow(DvR_apply(State, 0)) # 46
+nrow(DvR_apply(Season, 0)) # 24
+nrow(DvR_apply(WS, 0)) 8
 
 nrow(DvR_apply(Year, -10000)) # 324
 nrow(DvR_apply(State, -10000)) # 354
 nrow(DvR_apply(Season, -10000)) # 144
+nrow(DvR_apply(WS, -10000)) # 72
 
-56/324 # 0.173
-30/354 # 0.085
-34/144 # 0.236
+64/324 # 0.198
+46/354 # 0.130
+24/144 # 0.167
+8/72 # 0.111
 
-(56 + 30 + 34) / (324 + 354 + 144) # 0.146
-
-## Check percentages using a tolerance of 5%:
-nrow(DvR_apply(Year, 0.05)) # 50
-nrow(DvR_apply(State, 0.05)) # 26
-nrow(DvR_apply(Season, 0.05)) # 18
-
-50/324 # 0.154
-26/354 # 0.073
-18/144 # 0.125
-
-(50 + 26 + 18) / (324 + 354 + 144) # 0.114
+(64 + 46 + 24 + 8) / (324 + 354 + 144 + 72) # 0.159
 
 
 ```

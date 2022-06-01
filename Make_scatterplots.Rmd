@@ -15,58 +15,74 @@ library(ggplot2)
 library(cowplot)
 library(stringr)
 
-valid<- readRDS("Merged_monitor_Di_Reid_with_CMAQ.rds")
+valid<- readRDS("Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
 
 ## Capitalizing
 names(valid)[which(names(valid) == "year")]<- "Year"
 names(valid)[which(names(valid) == "season")]<- "Season"
 names(valid)[which(names(valid) == "state")]<- "State"
 
-valid$State<- str_to_title(valid$State)
+# valid$State<- str_to_title(valid$State)
 
 ```
 
 ```{r}
-## Make scatterplots with different colors by date and state (including the 17 points where Di is NA):
+
+CBF<- palette.colors()# color-blind friendly palette
+
+## Make scatterplots with different colors by different variables:
 
 plot_3_combos<- function(df, col_var, shape_var){
   
-  if(col_var == "State"){
-    shape_info<- c(rep(16,6), rep(17,5))
-  }else{
-    shape_info<- rep(16,5)
-  }
-  
-  p1<- ggplot(df,
+  if(col_var == "Warm_season"){
+    p1<- ggplot(df,
               aes_string(x="PM2.5", y="PM_Di", color = col_var, shape = shape_var))+
-    geom_point()+geom_abline(intercept=0,slope=1,color='red')+
+    geom_point()+geom_abline(intercept=0,slope=1)+
     ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
-    ylab("Di Estimates")
-  p2<- ggplot(df,
+    ylab("Di Estimates") + scale_color_manual(values = c("skyblue", "orange"))
+    
+    p2<- ggplot(df,
               aes_string(x="PM2.5",y="PM_Reid", color = col_var, shape = shape_var))+
-    geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
+    geom_point()+ geom_abline(intercept=0,slope=1)+
     ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
-    ylab("Reid Estimates")
-  
-  if(col_var == "State"){
+    ylab("Reid Estimates") + scale_color_manual(values = c("skyblue", "orange"))
+    
+    shape_info<- rep(16,2)
+    
     p3<- ggplot(df,
               aes_string(x="PM_Reid", y="PM_Di", color = col_var, shape = shape_var))+
-    geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
+    geom_point()+ geom_abline(intercept=0,slope=1)+
     ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
-    ylab("Di Estimates") + guides(shape = "none",
-                                  color = 
-                                   guide_legend(override.aes = 
-                                                  list(shape = shape_info)) )
+    ylab("Di Estimates") + guides(shape = "none") +
+      scale_color_manual(values = c("skyblue", "orange"), name = "Warm Season") 
     this_leg<- get_legend(p3 +
                         theme(legend.position = "bottom", legend.box = "vertical",
                                legend.key.width = unit(0.25, "line"), 
                               legend.spacing.y = unit(0.1, "cm")))
+    
   }else{
+    col_ramp<- colorRampPalette(c("pink", "blue"))
+    
+    p1<- ggplot(df,
+              aes_string(x="PM2.5", y="PM_Di", color = col_var, shape = shape_var))+
+    geom_point()+geom_abline(intercept=0,slope=1)+
+    ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
+    ylab("Di Estimates") + scale_colour_gradientn(colors = col_ramp(20))
+    
+    p2<- ggplot(df,
+              aes_string(x="PM2.5",y="PM_Reid", color = col_var, shape = shape_var))+
+    geom_point()+ geom_abline(intercept=0,slope=1)+
+    ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
+    ylab("Reid Estimates") + scale_colour_gradientn(colors = col_ramp(20))
+    
+    shape_info<- rep(16,5)
+    
     p3<- ggplot(df,
               aes_string(x="PM_Reid", y="PM_Di", color = col_var, shape = shape_var))+
-    geom_point()+ geom_abline(intercept=0,slope=1,color='red')+
+    geom_point()+ geom_abline(intercept=0,slope=1)+
     ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
-    ylab("Di Estimates") + guides(shape = "none")
+    ylab("Di Estimates") + guides(shape = "none") + 
+      scale_colour_gradientn(colors = col_ramp(20))
     
     this_leg<- get_legend(p3 + theme(legend.position = "bottom",
                                      legend.key.width = unit(1.25, "cm")))
@@ -80,17 +96,22 @@ plot_3_combos<- function(df, col_var, shape_var){
 
 ## Make plots:
 valid$pch<- 16
-valid$pch[which(valid$State > "nevada")]<- 17
+valid$pch[which(valid$State > "Nevada")]<- 17
 valid$pch<- factor(valid$pch)
 valid$State<- factor(valid$State)
 
-png("Plots/Scatterplots_state-colors.png", width=350, height=700)
-plot_3_combos(valid, "State", "pch")
-dev.off()
+# png("Plots/Scatterplots_state-colors.png", width=350, height=700)
+# plot_3_combos(valid, "State", "pch")
+# dev.off()
 
 valid$ones<- factor(1)
+valid$Year<- as.numeric(valid$Year)
 png("Plots/Scatterplots_year-colors.png", width=350, height=700)
-plot_3_combos(valid, "Year", "ones")
+plot_3_combos(valid[order(valid$Year, decreasing = TRUE),], "Year", "ones")
+dev.off()
+
+png("Plots/Scatterplots_WS-colors.png", width=350, height=700)
+plot_3_combos(valid[order(valid$Warm_season, decreasing = TRUE),], "Warm_season", "ones")
 dev.off()
 
 ```

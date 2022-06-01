@@ -11,30 +11,25 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(ggplot2)
+library(ggpattern)
 library(cowplot)
 library(stringr)
 
 CBF<- palette.colors()
 
 data<- readRDS("Spatio-temporal_results.rds")
+#OR:
+data<- readRDS("Spatio-temporal_results_No-missing.rds")
 
 Year<- data[[1]]
 State<- data[[2]]
 Season<- data[[3]]
+WS<- data[[4]]
 
 Season$Var<- str_to_title(Season$Var)
 
 ```
 
-```{r}
-
-# ## Exploratory
-# 
-# length(Year[which(Year$number < 10),"number"]) # 6 wo, 12 w
-# length(State[which(State$number < 10),"number"]) # 33 wo, 66 w
-# length(Season[which(Season$number < 10),"number"]) # 0 wo and w
-
-```
 
 ```{r}
 
@@ -49,12 +44,97 @@ my_alph<- function(num_vec){
 Year$alpha<- my_alph(Year$number)
 State$alpha<- my_alph(State$number)
 Season$alpha<- my_alph(Season$number)
+WS$alpha<- my_alph(WS$number)
 
 ```
 
 ```{r}
 
-## One plot to rule them all: use functions from cell below
+## One plot for warm season:
+
+Metrics<- c("RMSD", "R^2",
+            "Spatial RMSD", "Spatial Correlation Coefficient",
+            "Temporal RMSD",
+            "Temporal Correlation Coefficient")
+M<- length(Metrics)
+
+## Plotting function:
+
+ST_barplot<- function(df, X, metric){
+  subset<- df[which(df$metrics == metric),]
+  subset$Warm.Season<- factor(subset$Warm.Season)
+  
+  if(metric == "R^2"){
+    metric<- as.expression(bquote(~R^2))
+  }
+  
+  units<- ""
+  yscale<- NULL
+  if(metric %in% c("Spatial RMSD", "Temporal RMSD", "RMSD")){
+    units<- as.expression(bquote(~PM[2.5] ~ "(" * mu * "g/"*m^3*")"))
+    yscale<- scale_y_sqrt()
+  }
+  
+  p<- ggplot(subset, aes(x=Level, y=value, fill=Group)) + 
+  geom_bar_pattern(stat = "identity",
+                   pattern_color = "black", pattern_fill = "black",
+                   aes(pattern = Warm.Season),
+                   position = position_dodge()) + 
+    scale_fill_manual(values=c(as.vector(CBF[6]), as.vector(CBF[7]),
+                               as.vector(CBF[2]) ))
+    # + geom_text(aes(label=number), size=2, 
+    #           position = position_dodge(width = ))
+  
+  return(p + ggtitle(metric) + xlab(as.expression(bquote(~PM[2.5] ~ "Level"))) +
+           ylab(units) + # yscale +
+    theme(axis.text.x = element_text(angle = 0, vjust = 0.5)) +
+           theme(text = element_text(size = 16), legend.text=element_text(size=16),
+                   legend.title = element_text(face="bold")))
+  
+}
+
+
+########## Apply to create my plots:
+
+apply_ST_barplot<- function(df, X){
+  my_list<- vector(mode = "list", length = M)
+  for(m in 1:M){
+    my_list[[m]]<- ST_barplot(df, X, Metrics[m]) + theme(legend.position="none")
+  }
+  
+  my_legend<- get_legend(ST_barplot(df, X, Metrics[1]) +
+                          theme(legend.position = "bottom",
+                                 legend.key.width = unit(2, "line"),
+                                 legend.spacing.y = unit(0.1, "cm")))
+  
+  return(list(my_list, my_legend))
+}
+
+#### 1apply:
+
+WS$Level<- factor(WS$Level, levels = c("Overall", "Medium", "High"))
+WS$Group<- factor(WS$Group, levels = c("Di vs Monitor", "Reid vs Monitor", "Di vs Reid"))
+WS$Warm.Season<- factor(WS$Var, levels = c("TRUE", "FALSE"))
+
+# # Test:
+# ST_barplot(WS, "Warm Season", "RMSD")
+
+WS_plots<- apply_ST_barplot(WS, "Warm Season")
+
+
+png("Plots/ST_WS_points_No-missing.png", width=900, height=800)
+
+plot_grid(plot_grid(plotlist=WS_plots[[1]], nrow = 3), 
+          WS_plots[[2]], nrow=2, rel_heights = c(30,1))
+
+dev.off()
+
+
+```
+
+```{r}
+
+## One plot for year, state, and season: use functions from cell below
 
 Metrics<- c("RMSD", "R^2")
 M<- length(Metrics)
