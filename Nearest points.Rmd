@@ -1,0 +1,183 @@
+---
+title: "Nearest points"
+author: "Jiayuan Hao"
+date: "5/20/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(FNN)
+library(rgdal)
+library(raster)
+library(dplyr)
+library(lubridate)
+library(cowplot)
+library(xtable)
+
+states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
+states_id<- c(04,06,08,16,30,32,35,41,49,53,56)
+```
+
+```{r}
+#projection function
+#Transform coordinates to meters
+projection_meter<-function(DF_distinct){
+  grid<- DF_distinct
+  coordinates(grid)<- c("Lon", "Lat")
+  projection(grid)<- "+proj=longlat +ellps=GRS80 +datum=NAD83 +no_defs"
+  grid_df<- SpatialPointsDataFrame(grid,DF_distinct[,c("Lon", "Lat")])
+  Grid<- spTransform(grid_df, CRS("+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"))
+  cor_meter<-data.frame(DF_distinct,coordinates(Grid)[,1],coordinates(Grid)[,2])
+  colnames(cor_meter)=c("Lon", "Lat",'Easting','Northing')
+  return(cor_meter)
+}
+```
+
+```{r}
+###Reid Data transformation
+##########with CMAQ##########
+WF<-data.frame()
+for (i in 1:11){
+  filename<-paste0('/Users/jiayuanhao/Documents/Harvard/Rachel/data/Reid/PM2.5/Ensemble_preds_with_CMAQ_',states[i],'.RData')
+  load(filename)
+  DF<-DF[which(DF$Tract_code != "NA"),]
+  DF_distinct<-distinct(DF[,c("Lon", "Lat")])
+  cor_meter<-projection_meter(DF_distinct)
+  cor_meter$state_DF<-states_id[i]
+  WF<-rbind(WF,cor_meter)
+}
+
+
+##########Without CMAQ###########
+#WF<-data.frame()
+#for (i in 1:11){
+#  filename<-paste0('/Users/jiayuanhao/Documents/Harvard/Rachel/data/Reid/PM2.5_no_CMAQ/Ensemble_preds_n#o_CMAQ_',states[i],'.RData')
+#  load(filename)
+#  DF<-DF[which(DF$Tract_code != "NA"),]
+#  DF_distinct<-distinct(DF[,c("Lon", "Lat")])
+#  cor_meter<-projection_meter(DF_distinct)
+#  cor_meter$state_DF<-states_id[i]
+#  WF<-rbind(WF,cor_meter)
+#} 
+
+```
+
+```{r}
+#Di data transformation
+west_info<-readRDS(file="/Users/jiayuanhao/Documents/Rachel/data/Di/west_over.rds")
+#Read USGridSite
+grid_sites<- readRDS("/Users/jiayuanhao/Documents/Rachel/data/Di/r-code/USGridSite.rds")
+#Project data into meters
+Di_meter<-cbind(grid_sites,projection_meter(grid_sites[,c("Lon","Lat")]))
+```
+
+```{r}
+#Monitor data transformation
+monitor_clean<-readRDS('/Users/jiayuanhao/Documents/harvard/Rachel/data/update/monitor_clean.rds')
+#EPA
+EPA<-readRDS('/Users/jiayuanhao/Documents/harvard/Rachel/data/comparision/EPA_combine.rds')
+#monitor_clean<-distinct(EPA[,1:6])
+colnames(monitor_clean)<-c("Lat","Lon","PM2.5","Date","Data_Source_Name_Display","State_Code")
+PM25_all<-cbind(monitor_clean,projection_meter(monitor_clean[,c("Lon","Lat")]))
+PM25_all<-PM25_all[,-9:-10]
+PM25_all<-PM25_all[,-7:-8]
+PM25_distinct<-distinct(PM25_all[,c('Easting','Northing')])
+```
+
+```{r}
+#Use knnx function to find to nearest Reid point of monitors
+DF_knnx<-WF[,3:4]
+knnx_one<-data.frame(matrix(unlist(get.knnx(DF_knnx,PM25_distinct,k=1)),ncol=2, byrow=F))
+knnx_one<-data.frame(knnx_one,WF$Lon[knnx_one$X1],WF$Lat[knnx_one$X1],WF$state_DF[knnx_one$X1],PM25_distinct$Easting,PM25_distinct$Northing)
+colnames(knnx_one)<-c("X1","X2","DF_Lon","DF_Lat","state_id","PM_Easting","PM_Northing")
+PM25_knnx=inner_join(PM25_all,knnx_one,by=c("Easting"="PM_Easting","Northing"="PM_Northing"))
+PM25_knnx$date<-as.Date(PM25_knnx$date)
+#PM25_knnx$date<-as.Date(PM25_knnx$Date) #EPA
+PM25_knnx<-PM25_knnx[,c("date","PM2.5","Lon","Lat","stateCode","group","year","DF_Lon","DF_Lat","state_id")]
+saveRDS(PM25_knnx,'/Users/jiayuanhao/Documents/Harvard/Rachel/data/update/reid_w_monitor_knnx.rds')
+#saveRDS(PM25_knnx,'/Users/jiayuanhao/Documents/Harvard/Rachel/data/update/reid_w_EPA_knnx.rds') #EPA
+
+```
+
+
+
+```{r}
+#Find the index of nearest Di point of Reid data
+#We look for the index of each nearest Di point, then loop through daily Di data using these indexes.
+knnx<-data.frame(matrix(unlist(get.knnx(WF[,c('Easting','Northing')],grid_sites[,c('Easting','Northing')],k=1)),ncol=2, byrow=F))
+
+######Using location to extract nearest Di data 
+#gridsite
+grid_sites<- readRDS("/n/home02/haohaojy/Di/gridsites.frame.rds")
+coords<- grid_sites[,c("Lon", "Lat")]
+
+for (y in 2008:2009){
+  filename<-list.files(paste0("/net/rcstorenfs02/ifs/rc_labs/dominici_lab/lab/data/qd_predictions_ensemble/",y))
+  knnx<-data.frame()
+  for (i in 1:length(filename)){
+    if (as.Date(as.Date(as.Date(paste0(y,"-01-01"))+i-1)) %in% as.Date(monitor_knnx$date) == TRUE){
+      Di_grid<-readRDS(paste0("/net/rcstorenfs02/ifs/rc_labs/dominici_lab/lab/data/qd_predictions_ensemble/",y,"/",filename[i]))
+      pm <- data.frame(t(Di_grid))
+      pm <- cbind(grid_sites,pm)
+      pm_monitor<-data.frame(pm[knnx$X1,])[,c('Lon','Lat','t.Di_grid.')]
+      names(pm_monitor)<-c('Lon','Lat','PM_Di')
+      pm_monitor$Date=as.Date(as.Date(as.Date(paste0(y,"-01-01"))+i-1))
+      knnx<-rbind(knnx,pm_monitor)
+    }
+  }  
+  savename=paste0('/n/home02/haohaojy/monitor/portable/Reid_Di_',y,'.rds')
+  saveRDS(knnx,file=savename)
+}
+
+#Match daily Di with daily Reid
+states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
+states_id<- c(04,06,08,16,30,32,35,41,49,53,56)
+
+for (s in 1:11){
+  load(paste0('/n/home02/haohaojy/Reid_PM2.5/PM2.5_with_CMAQ/A_Ensemble_preds_with_CMAQ_',states[s],'.RData'))
+  WF<-DF[,c('County_FIPS','Tract_code','Lon','Lat','Date','Ens_pred')]
+  WF<-WF[which(!is.na(WF$Tract_code)),]
+  WF$state<-states[s]
+  WF$stateID<-states_id[s]
+  Reid_Di<-data.frame()
+  for (i in 2008:2016){
+    filename<-paste0("/n/home02/haohaojy/monitor/portable/Reid_Di_",i,".rds")
+    Di<-readRDS(filename)
+    p<-inner_join(Di,WF,by=c("Lon_DF"="Lon","Lat_DF"="Lat","Date"="Date"))
+    Reid_Di<-rbind(Reid_Di,p)
+  }
+  savename<-paste0("/n/home02/haohaojy/Combine/point/",states[s],"_point.rds")
+  saveRDS(Reid_Di,file=savename)
+}
+
+```
+
+```{r}
+#Combine monitor with Reid's and Di information (with CMAQ)
+#Reid has already combined with its nearest Di
+monitor_reid<-readRDS('/n/home02/haohaojy/monitor/update/reid_w_monitor_knnx.rds')
+names(monitor_reid)
+monitor_reid<-monitor_reid[,c("Lat","Lon","PM2.5","date","stateCode","group","year","DF_Lon","DF_Lat","state_id")]
+
+monitor_reid_di<-data.frame()
+for (i in 1:11){
+  filename<-paste0('/n/home02/haohaojy/Combine/point/A_',states[i],'_point.rds')
+  DF<-readRDS(filename)
+  DF<-DF[which(DF$Tract_code != "NA"),]
+  monitor_reid_di_knnx=inner_join(monitor_reid,DF,by=c("DF_Lon"="Lon_DF","DF_Lat"="Lat_DF","date"="Date"))
+  monitor_reid_di<-rbind(monitor_reid_di,monitor_reid_di_knnx)
+}
+
+## Note Di NA's before proceeding:
+#di_na_pos<- which(is.na(monitor_reid_di$PM_grid)) # 17 obs
+
+# summary(as.factor(monitor_reid_di$group))
+# airsis   wrcc 
+# 22523   6095 
+saveRDS(PM25_monitor,"/Users/jiayuanhao/Documents/Harvard/Rachel/data/update/monitor_reid_di_08-16.rds")
+
+```

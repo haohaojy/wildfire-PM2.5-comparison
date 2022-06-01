@@ -1,0 +1,76 @@
+---
+title: "Monitor_processing"
+author: "Jiayuan Hao"
+date: "5/18/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(lubridate)
+library(xtable)
+```
+
+```{r}
+#Import monitor data
+airsis<-read.csv('/Users/jiayuanhao/Documents/harvard//Rachel/data/comparision/airsis.csv')
+airsis$group<-'airsis'
+wrcc<-read.csv('/Users/jiayuanhao/Documents/harvard/Rachel/data/comparision/wrcc.csv')
+wrcc$group<-'wrcc'
+#Combine airsis with wrcc n=44627(airsis=34457, wrcc=10170)
+#summary(as.factor(monitor$group))
+monitor<-rbind(airsis,wrcc)
+monitor<-monitor[,c("date","PM2.5","longitude","latitude","stateCode","group" )]
+colnames(monitor)<-c("date","PM2.5","Lon","Lat","stateCode","group" )
+monitor$year<-year(monitor$date)
+```
+
+
+```{r}
+#keep monitor with PM2.5<1000 
+#n=44590(airsis=34434, wrcc=10156) 
+#summary(as.factor(monitor_1000$group))
+#remove 37 obs, 23 for airsis and 14 for wrcc
+monitor_1000<-monitor[which(monitor$PM2.5<1000),]
+#table(monitor[which(monitor$PM2.5>=1000),]$year) 
+#2010 2016 2017 2018 
+#  12    6    8   11 
+
+# For 2008-2016:
+# table(monitor_1000[which(monitor_1000$year<2017),]$group)
+# airsis   wrcc 
+# 22916   6118 
+
+
+#Remove overlap points in Reid
+PM25_inputs<-readRDS(file='/Users/jiayuanhao/Documents/Harvard/Rachel/data/Reid/PM25_inputs.rds')
+monitor_1000$row_id<-1:dim(monitor_1000)[1]
+overlap<- inner_join(monitor_1000, PM25_inputs, by = c("Lon" = "Lon",
+                                                   "Lat" = "Lat",
+                                                   "date" = "Date_Local"))#763 obs
+# table(overlap$group) 
+# #airsis   wrcc 
+# #  760      3 
+
+# 2008-2016
+# table(overlap[which(overlap$Year<2017),]$group) 
+# #airsis   wrcc 
+# #  376      3 
+
+# 2017-2018
+# table(overlap[which(overlap$Year>2016),]$group) 
+# #airsis   wrcc 
+# #  384      0 
+
+monitor_clean<- monitor_1000[which(!monitor_1000$row_id %in% overlap$row_id),]
+# For 2008-2016:
+# table(monitor_clean[which(monitor_clean$year<2017),]$group)
+# airsis   wrcc 
+# 22540   6115 
+saveRDS(monitor_clean,'/Users/jiayuanhao/Documents/harvard/Rachel/data/update/monitor_clean.rds')
+```
+

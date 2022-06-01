@@ -1,0 +1,44 @@
+---
+title: "Reid_aggregate"
+author: "Jiayuan Hao"
+date: "5/16/2022"
+output: html_document
+---
+
+````{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(lubridate)
+states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
+```
+
+```{r}
+#Aggregate no_CMAQ data
+for (i in 1:11){
+  filename<-paste0('/n/home02/haohaojy/Reid_PM2.5/PM2.5_no_CMAQ/Ensemble_preds_no_CMAQ_',states[i],'.RData')
+  load(filename)
+  DF<-DF[which(DF$Tract_code != "NA"),]
+  DF2<-DF[,c( "County_FIPS","Tract_code", "Lon","Lat","Date","Ens_pred")]
+  DF3<-aggregate(Ens_pred~County_FIPS+Tract_code+Date,DF2,FUN ='mean')
+  DF_uni<-distinct(DF2[,c( "County_FIPS","Tract_code", "Lon","Lat")])
+  DF4<-inner_join(DF3,DF_uni,by=c("County_FIPS"="County_FIPS","Tract_code"="Tract_code"))
+  saveRDS(DF4,paste0('/n/home02/haohaojy/Reid_PM2.5/PM2.5_no_CMAQ/A_Ensemble_preds_no_CMAQ_',states[i],'.rds'))
+}
+```
+
+```{r}
+#Aggregate CMAQ data
+for (i in 1:11){
+  filename<-paste0('/n/home02/haohaojy/Reid_PM2.5/PM2.5_with_CMAQ/Ensemble_preds_with_CMAQ_',states[i],'.RData')
+  load(filename)
+  DF<-DF[which(DF$Tract_code != "NA"),]
+  DF2<-DF[,c( "County_FIPS","Tract_code", "Lon","Lat","Date","Ens_pred")]
+  DF3<-aggregate(Ens_pred~County_FIPS+Tract_code+Date,DF2,FUN ='mean')
+  DF_uni<-distinct(DF2[,c( "County_FIPS","Tract_code", "Lon","Lat")])
+  DF4<-inner_join(DF3,DF_uni,by=c("County_FIPS"="County_FIPS","Tract_code"="Tract_code"))
+  saveRDS(DF4,paste0('/n/home02/haohaojy/Reid_PM2.5/PM2.5_with_CMAQ/A_Ensemble_preds_with_CMAQ_',states[i],'.rds'))
+}
+```
