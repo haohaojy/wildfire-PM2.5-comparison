@@ -1,4 +1,4 @@
-#### Generating Tables 1 and 2 (summary statistics of the validation set)
+#### Generating Table 1 and long table in the SI (summary statistics of the validation set)
 
 library(xtable)
 
