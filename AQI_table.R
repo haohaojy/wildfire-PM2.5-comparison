@@ -3,14 +3,23 @@ library(xtable)
 # install_github("NSAPH-Software/NSAPHutils", ref="develop")
 library(NSAPHutils)
 
-data<- readRDS("Merged_monitor_Di_Reid_with_CMAQ.rds")
+valid<- readRDS("Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
+
+na<- which(is.na(valid$PM_Di)|is.na(valid$PM_Reid))
+data<- valid[-na,]
+
 Data<- data[,c("date", "year", "season", "state", "GEOID", 
                "PM2.5", "PM_Di", "PM_Reid")]
 
 ## Apply aqi equation from NSAPHutils:
 
 Data$Monitor_class<- aqi_equation("PM2.5", Data$PM2.5)$Color
-Data$Reid_class<- aqi_equation("PM2.5", Data$PM_Reid)$Color
+# Data$Reid_class<- aqi_equation("PM2.5", Data$PM_Reid)$Color
+# Data$Di_class<- aqi_equation("PM2.5", Data$PM_Di)$Color
+
+reid_na_pos<- which(is.na(Data$PM_Reid))
+Data$Reid_class<- NA
+Data$Reid_class[-reid_na_pos]<- aqi_equation("PM2.5", Data$PM_Reid[-reid_na_pos])$Color
 
 di_na_pos<- which(is.na(Data$PM_Di))
 Data$Di_class<- NA
@@ -25,15 +34,15 @@ Data$Reid_class<- as.numeric(factor(Data$Reid_class, levels = color_order))
 
 Comparison<- c("Di vs Monitor", "Reid vs Monitor")
 Misclassified<- c(mean(Data$Di_class != Data$Monitor_class, na.rm = TRUE),
-                       mean(Data$Reid_class != Data$Monitor_class))
+                       mean(Data$Reid_class != Data$Monitor_class, na.rm = TRUE))
 Underclassified<- c(mean(Data$Di_class < Data$Monitor_class, na.rm = TRUE),
-                   mean(Data$Reid_class < Data$Monitor_class))
+                   mean(Data$Reid_class < Data$Monitor_class, na.rm = TRUE))
 Overclassified<- c(mean(Data$Di_class > Data$Monitor_class, na.rm = TRUE),
-                   mean(Data$Reid_class > Data$Monitor_class))
+                   mean(Data$Reid_class > Data$Monitor_class, na.rm = TRUE))
 Large_misclass<- c(mean(abs(Data$Di_class - Data$Monitor_class) > 1, na.rm = TRUE),
-                   mean(abs(Data$Reid_class > Data$Monitor_class) > 1))
+                   mean(abs(Data$Reid_class > Data$Monitor_class) > 1, na.rm = TRUE))
 UHM<- c(mean((Data$Di_class <= 2)&(Data$Monitor_class > 2), na.rm = TRUE),
-                   mean((Data$Reid_class <= 2)&(Data$Monitor_class > 2)))
+                   mean((Data$Reid_class <= 2)&(Data$Monitor_class > 2), na.rm = TRUE))
 
 Results<- data.frame(Comparison, Misclassified, Underclassified,
                      Overclassified, Large_misclass, UHM)
