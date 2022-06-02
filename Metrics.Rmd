@@ -82,7 +82,7 @@ metrics<- function(mydata){
 
 ```{r}
 ## Validation data set:
-valid<- readRDS("Merged_monitor_Di_Reid_with_CMAQ.rds")
+valid<- readRDS("Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
 
 xtable(round( cbind(metrics(valid), metrics(valid[which(valid$PM2.5 >= 12.1),]),
              metrics(valid[which(valid$PM2.5 >= 35.5),])), 2 ))
