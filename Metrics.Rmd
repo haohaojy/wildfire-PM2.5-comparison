@@ -12,13 +12,13 @@ library(xtable)
 
 metrics<- function(mydata){
   MB<- c(mean(-mydata$diff_mo_po,na.rm=T),
-  mean(-mydata$diff_mo_ct))
+  mean(-mydata$diff_mo_ct,na.rm=T))
   
   NMB<- c(sum(-mydata$diff_mo_po,na.rm=T)/sum(mydata$PM2.5),
   sum(-mydata$diff_mo_ct,na.rm=T)/sum(mydata$PM2.5))
   
   MAD<- c(median(abs(mydata$diff_mo_po),na.rm=T),
-  median(abs(mydata$diff_mo_ct)))
+  median(abs(mydata$diff_mo_ct),na.rm=T))
   
   MR<- c(median(mydata$PM_Di/mydata$PM2.5,na.rm=T),
   median(mydata$PM_Reid/mydata$PM2.5,na.rm=T))
@@ -30,26 +30,26 @@ metrics<- function(mydata){
   cor(mydata$PM_Reid,mydata$PM2.5,use="complete.obs")^2)
   
   ## Spatial and Temporal RMSD:
-  Spatial<-aggregate(data=mydata,diff_mo_po~GEOID,FUN=mean)
+  Spatial<-aggregate(data=mydata,diff_mo_po~GEOID,FUN=mean,na.rm=T)
   colnames(Spatial)<-c('GEOID','PM')
-  Spatial.2<-aggregate(data=mydata,diff_mo_ct~GEOID,FUN=mean)
+  Spatial.2<-aggregate(data=mydata,diff_mo_ct~GEOID,FUN=mean,na.rm=T)
   colnames(Spatial.2)<-c('GEOID','PM')
   Spat.RMSD<- c(sqrt((1/(nrow(Spatial)))*(sum((Spatial$PM)^2))),
               sqrt((1/(nrow(Spatial.2)))*(sum((Spatial.2$PM)^2)))) 
    
-  Temporal<-aggregate(data=mydata,diff_mo_po~date,FUN=mean)
+  Temporal<-aggregate(data=mydata,diff_mo_po~date,FUN=mean,na.rm=T)
   colnames(Temporal)<-c('date','PM')
-  Temporal.2<-aggregate(data=mydata,diff_mo_ct~date,FUN=mean)
+  Temporal.2<-aggregate(data=mydata,diff_mo_ct~date,FUN=mean,na.rm=T)
   colnames(Temporal.2)<-c('date','PM')
   Temp.RMSD<- c(sqrt((1/(nrow(Temporal)))*(sum((Temporal$PM)^2))),
                 sqrt((1/(nrow(Temporal.2)))*(sum((Temporal.2$PM)^2))))
   
   ## Spatial and Temporal R^2:
-  a<-aggregate(data=mydata,PM2.5~GEOID,FUN=mean)
+  a<-aggregate(data=mydata,PM2.5~GEOID,FUN=mean,na.rm=T)
   colnames(a)=c('GEOID','mo')
-  b<-aggregate(data=mydata,PM_Reid~GEOID,FUN=mean)
+  b<-aggregate(data=mydata,PM_Reid~GEOID,FUN=mean,na.rm=T)
   colnames(b)=c('GEOID','ct')
-  c<-aggregate(data=mydata,PM_Di~GEOID,FUN=mean)
+  c<-aggregate(data=mydata,PM_Di~GEOID,FUN=mean,na.rm=T)
   colnames(c)=c('GEOID','po')
   spatial=merge(a,b,by=c('GEOID'))
   spatial=merge(spatial,c,by=c('GEOID'))
@@ -59,11 +59,11 @@ metrics<- function(mydata){
   Spat.R2<- c((sum((spatial$mo-mean_mo)*(spatial$po-mean_grid)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$po-mean_grid)^2)))),
              (sum((spatial$mo-mean_mo)*(spatial$ct-mean_ct)))/(sqrt(sum((spatial$mo-mean_mo)^2)*(sum((spatial$ct-mean_ct)^2)))))
   
-  a<-aggregate(data=mydata,PM2.5~date,FUN=mean)
+  a<-aggregate(data=mydata,PM2.5~date,FUN=mean,na.rm=T)
   colnames(a)=c('date','mo')
-  b<-aggregate(data=mydata,PM_Reid~date,FUN=mean)
+  b<-aggregate(data=mydata,PM_Reid~date,FUN=mean,na.rm=T)
   colnames(b)=c('date','ct')
-  c<-aggregate(data=mydata,PM_Di~date,FUN=mean)
+  c<-aggregate(data=mydata,PM_Di~date,FUN=mean,na.rm=T)
   colnames(c)=c('date','po')
   temporal=merge(a,b,by=c('date'))
   temporal=merge(temporal,c,by=c('date'))
@@ -84,6 +84,10 @@ metrics<- function(mydata){
 ## Validation data set:
 valid<- readRDS("Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
 
+na<- which(is.na(valid$PM_Di)|is.na(valid$PM_Reid))
+valid<- valid[-na,]
+valid_16<- valid[,c("longitude", "latitude", "date")] # for later use...
+
 xtable(round( cbind(metrics(valid), metrics(valid[which(valid$PM2.5 >= 12.1),]),
              metrics(valid[which(valid$PM2.5 >= 35.5),])), 2 ))
 
@@ -96,6 +100,8 @@ xtable(round( cbind(metrics(valid), metrics(valid[which(valid$PM2.5 >= 12.1),]),
 EPA<- readRDS("Merged_EPA_Di_Reid_with_CMAQ.rds")
 EPA$diff_mo_ct<- EPA$PM2.5-EPA$PM_Reid
 EPA$diff_mo_po<- EPA$PM2.5-EPA$PM_Di
+
+EPA<- EPA[which(!is.na(EPA$PM_Di)),] # 56 obs
 
 epa<- round( cbind(metrics(EPA), metrics(EPA[which(EPA$PM2.5 >= 12.1),]),
              metrics(EPA[which(EPA$PM2.5 >= 35.5),])), 2 )
@@ -164,7 +170,9 @@ valid<- readRDS("Merged_monitor_Reid_without_CMAQ.rds")
 
 ## Evaluating Reid estimates 2008-2016:
 
-reid_16<- valid[which(valid$date < "2017-01-01"),]
+# reid_16<- valid[which(valid$date < "2017-01-01"),]
+reid_16<- inner_join(valid_16, valid)
+reid_16<- distinct(reid_16) 
 
 Reid_16<- round( cbind(metrics_justReid(reid_16), 
                           metrics_justReid(reid_16[which(reid_16$PM2.5 >= 12.1),]),
