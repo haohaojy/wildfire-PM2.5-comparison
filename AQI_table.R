@@ -52,5 +52,17 @@ save.image(file = "AQI_calcs.RData")
 
 xtable(Results[,2:6]*100)
 
+### Look at whole classification table:
 
+load("AQI_calcs.RData")
 
+RvM<- table(Data[,c("Monitor_class", "Reid_class")])
+DvM<- table(Data[,c("Monitor_class", "Di_class")])
+
+RvM<- rbind(RvM, colSums(RvM))
+DvM<- rbind(DvM, colSums(DvM))
+RvM<- cbind(RvM, rowSums(RvM))
+DvM<- cbind(DvM, rowSums(DvM))
+
+xtable(RvM)
+xtable(DvM)
