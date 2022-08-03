@@ -24,6 +24,11 @@ names(valid)[which(names(valid) == "state")]<- "State"
 
 # valid$State<- str_to_title(valid$State)
 
+## Adjust Season labels:
+
+valid$Season<- "Cold"
+valid$Season[which(valid$Warm_season == TRUE)]<- "Warm"
+
 ```
 
 ```{r}
@@ -34,16 +39,18 @@ CBF<- palette.colors()# color-blind friendly palette
 
 plot_3_combos<- function(df, col_var, shape_var){
   
-  if(col_var == "Warm_season"){
+  if(col_var == "Season"){
     p1<- ggplot(df,
               aes_string(x="PM2.5", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+geom_abline(intercept=0,slope=1)+
+      geom_abline(intercept = 0,slope = lm(PM_Di ~ PM2.5 - 1, df)$coefficients, col = "#009E73") + 
     ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
     ylab("Di Estimates") + scale_color_manual(values = c("skyblue", "orange"))
     
     p2<- ggplot(df,
               aes_string(x="PM2.5",y="PM_Reid", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1)+
+      geom_abline(intercept = 0,slope = lm(PM_Reid ~ PM2.5 - 1, df)$coefficients, col = "#009E73") +
     ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
     ylab("Reid Estimates") + scale_color_manual(values = c("skyblue", "orange"))
     
@@ -52,9 +59,10 @@ plot_3_combos<- function(df, col_var, shape_var){
     p3<- ggplot(df,
               aes_string(x="PM_Reid", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1)+
+      geom_abline(intercept = 0,slope = lm(PM_Di ~ PM_Reid - 1, df)$coefficients, col = "#009E73") +
     ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
     ylab("Di Estimates") + guides(shape = "none") +
-      scale_color_manual(values = c("skyblue", "orange"), name = "Warm Season") 
+      scale_color_manual(values = c("skyblue", "orange"), name = "Season") 
     this_leg<- get_legend(p3 +
                         theme(legend.position = "bottom", legend.box = "vertical",
                                legend.key.width = unit(0.25, "line"), 
@@ -66,12 +74,14 @@ plot_3_combos<- function(df, col_var, shape_var){
     p1<- ggplot(df,
               aes_string(x="PM2.5", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+geom_abline(intercept=0,slope=1)+
+      geom_abline(intercept = 0,slope = lm(PM_Di ~ PM2.5 - 1, df)$coefficients, col = "#009E73") +
     ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
     ylab("Di Estimates") + scale_colour_gradientn(colors = col_ramp(20))
     
     p2<- ggplot(df,
               aes_string(x="PM2.5",y="PM_Reid", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1)+
+      geom_abline(intercept = 0,slope = lm(PM_Reid ~ PM2.5 - 1, df)$coefficients, col = "#009E73") +
     ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
     ylab("Reid Estimates") + scale_colour_gradientn(colors = col_ramp(20))
     
@@ -80,6 +90,7 @@ plot_3_combos<- function(df, col_var, shape_var){
     p3<- ggplot(df,
               aes_string(x="PM_Reid", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1)+
+      geom_abline(intercept = 0,slope = lm(PM_Di ~ PM_Reid - 1, df)$coefficients, col = "#009E73") +
     ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
     ylab("Di Estimates") + guides(shape = "none") + 
       scale_colour_gradientn(colors = col_ramp(20))
@@ -111,7 +122,7 @@ plot_3_combos(valid[order(valid$Year, decreasing = TRUE),], "Year", "ones")
 dev.off()
 
 png("Plots/Scatterplots_WS-colors.png", width=350, height=700)
-plot_3_combos(valid[order(valid$Warm_season, decreasing = TRUE),], "Warm_season", "ones")
+plot_3_combos(valid[order(valid$Warm_season, decreasing = TRUE),], "Season", "ones")
 dev.off()
 
 ```
