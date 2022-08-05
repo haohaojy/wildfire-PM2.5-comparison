@@ -78,6 +78,8 @@ ST_barplot<- function(df, X, metric){
   if(metric %in% c("Spatial RMSD", "Temporal RMSD", "RMSD")){
     units<- as.expression(bquote(~PM[2.5] ~ "(" * mu * "g/"*m^3*")"))
     yscale<- scale_y_sqrt()
+  }else if(metric %in% c("Normalized Mean Bias")){
+    units<- as.expression(bquote(~PM[2.5] ~ "(" * mu * "g/"*m^3*")"))
   }
   
   p<- ggplot(subset, aes(x=Level, y=value, fill=Group)) + 
