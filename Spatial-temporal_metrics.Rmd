@@ -18,10 +18,14 @@ library(Metrics)
 Groups<- c("Reid vs Monitor", "Di vs Monitor", "Di vs Reid")
 levels<- c(0, 12.1, 35.5)
 Levels<- c("Overall", "Medium", "High")
-Metrics<- c("RMSD", "R^2",
-            "Spatial RMSD", "Spatial Correlation Coefficient",
-            "Temporal RMSD",
+Metrics<- c( "Normalized Mean Bias", "Median Ratio",
+             "RMSD", "R^2",
+             "Spatial Correlation Coefficient",
             "Temporal Correlation Coefficient")
+# Metrics<- c("RMSD", "R^2",
+#             "Spatial RMSD", "Spatial Correlation Coefficient",
+#             "Temporal RMSD",
+#             "Temporal Correlation Coefficient")
 
 ST<- function(data, var, l, group){
   
@@ -39,9 +43,24 @@ ST<- function(data, var, l, group){
     subdata$pm1<- subdata[,"PM2.5"]
     subdata$pm2<- subdata[,"PM_Di"]
   }else{
-    subdata$pm1<- subdata[,"PM_Di"]
-    subdata$pm2<- subdata[,"PM_Reid"]
+    subdata$pm1<- subdata[,"PM_Reid"]
+    subdata$pm2<- subdata[,"PM_Di"]
   }
+  
+  ## Normalized Mean Bias
+  
+  nmb<- sapply(subsets, function(s){
+    df<- subdata[which(subdata$var == s & !is.na(subdata$pm1) & !is.na(subdata$pm2)),]
+    return(c(number = dim(df)[1], value = sum(df$pm2 - df$pm1, na.rm=TRUE) /
+               sum(df$pm1, na.rm=TRUE)))
+  })
+  
+  ## Median Ratio
+  
+  mr<- sapply(subsets, function(s){
+    df<- subdata[which(subdata$var == s & !is.na(subdata$pm1) & !is.na(subdata$pm2) & subdata$pm1 != 0),]
+    return(c(number = dim(df)[1], value = median(df$pm2 / df$pm1, na.rm=TRUE)))
+  })
   
   ## RMSD
   rmsd<- sapply(subsets, function(s){
@@ -60,12 +79,12 @@ ST<- function(data, var, l, group){
   
   spatial<- aggregate(data=subdata, cbind(pm1, pm2) ~ GEOID + var, FUN = mean)
   
-  ## Spatial RMSD
-  
-  spatial_rmsd<- sapply(subsets, function(s){
-    df<- spatial[which(spatial$var == s & !is.na(spatial$pm1) & !is.na(spatial$pm2)),]
-    return(c(number = dim(df)[1], value = rmse(df$pm1, df$pm2)))
-  })
+  # ## Spatial RMSD
+  # 
+  # spatial_rmsd<- sapply(subsets, function(s){
+  #   df<- spatial[which(spatial$var == s & !is.na(spatial$pm1) & !is.na(spatial$pm2)),]
+  #   return(c(number = dim(df)[1], value = rmse(df$pm1, df$pm2)))
+  # })
   
   ## Spatial Correlation
   
@@ -78,12 +97,12 @@ ST<- function(data, var, l, group){
   
   temporal<- aggregate(data=subdata, cbind(pm1, pm2) ~ date + var, FUN = mean)
   
-  ## Temporal RMSD
-  
-  temporal_rmsd<- sapply(subsets, function(s){
-    df<- temporal[which(temporal$var == s & !is.na(temporal$pm1) & !is.na(temporal$pm2)),]
-    return(c(number = dim(df)[1], value = rmse(df$pm1, df$pm2)))
-  })
+  # ## Temporal RMSD
+  # 
+  # temporal_rmsd<- sapply(subsets, function(s){
+  #   df<- temporal[which(temporal$var == s & !is.na(temporal$pm1) & !is.na(temporal$pm2)),]
+  #   return(c(number = dim(df)[1], value = rmse(df$pm1, df$pm2)))
+  # })
   
   ## Temporal Correlation
   
@@ -96,8 +115,14 @@ ST<- function(data, var, l, group){
   results<- data.frame(Var = rep(subsets, length(Metrics)),
                        Group = Groups[group], Level = Levels[l],
                       metrics = rep(Metrics, each = length(subsets)),
-                       t(cbind(rmsd, r2, spatial_rmsd, spatial_r, 
-                               temporal_rmsd, temporal_r)))
+                       t(cbind(nmb, mr,
+                               rmsd, r2, 
+                               spatial_r, temporal_r)))
+  # results<- data.frame(Var = rep(subsets, length(Metrics)),
+  #                      Group = Groups[group], Level = Levels[l],
+  #                     metrics = rep(Metrics, each = length(subsets)),
+  #                      t(cbind(rmsd, r2, spatial_rmsd, spatial_r, 
+  #                              temporal_rmsd, temporal_r)))
   
   return(results)
 }
@@ -118,12 +143,14 @@ apply_ST<- function(data, var){
 
 valid<- readRDS("Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
 
-Year<- apply_ST(valid, "year")
-State<- apply_ST(valid, "stateCode")
-Season<- apply_ST(valid, "season")
+# Year<- apply_ST(valid, "year")
+# State<- apply_ST(valid, "stateCode")
+# Season<- apply_ST(valid, "season")
+
 WS<- apply_ST(valid, "Warm_season")
 
-saveRDS(list(Year, State, Season, WS), "Spatio-temporal_results.rds")
+saveRDS(WS, "ST_WS.rds")
+# saveRDS(list(Year, State, Season, WS), "Spatio-temporal_results.rds")
 
 ## When we don't include points where either dataset is missing:
 

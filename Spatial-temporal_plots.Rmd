@@ -17,16 +17,17 @@ library(stringr)
 
 CBF<- palette.colors()
 
-data<- readRDS("Spatio-temporal_results.rds")
-#OR:
-data<- readRDS("Spatio-temporal_results_No-missing.rds")
-
-Year<- data[[1]]
-State<- data[[2]]
-Season<- data[[3]]
-WS<- data[[4]]
-
-Season$Var<- str_to_title(Season$Var)
+WS<- readRDS("ST_WS.rds")
+# data<- readRDS("Spatio-temporal_results.rds")
+# #OR:
+# data<- readRDS("Spatio-temporal_results_No-missing.rds")
+# 
+# Year<- data[[1]]
+# State<- data[[2]]
+# Season<- data[[3]]
+# WS<- data[[4]]
+# 
+# Season$Var<- str_to_title(Season$Var)
 
 ```
 
@@ -41,9 +42,9 @@ my_alph<- function(num_vec){
   return(a)
 }
 
-Year$alpha<- my_alph(Year$number)
-State$alpha<- my_alph(State$number)
-Season$alpha<- my_alph(Season$number)
+# Year$alpha<- my_alph(Year$number)
+# State$alpha<- my_alph(State$number)
+# Season$alpha<- my_alph(Season$number)
 WS$alpha<- my_alph(WS$number)
 
 ```
@@ -52,17 +53,21 @@ WS$alpha<- my_alph(WS$number)
 
 ## One plot for warm season:
 
-Metrics<- c("RMSD", "R^2",
-            "Spatial RMSD", "Spatial Correlation Coefficient",
-            "Temporal RMSD",
+Metrics<- c( "Normalized Mean Bias", "Median Ratio",
+             "RMSD", "R^2",
+             "Spatial Correlation Coefficient",
             "Temporal Correlation Coefficient")
+# Metrics<- c("RMSD", "R^2",
+#             "Spatial RMSD", "Spatial Correlation Coefficient",
+#             "Temporal RMSD",
+#             "Temporal Correlation Coefficient")
 M<- length(Metrics)
 
 ## Plotting function:
 
 ST_barplot<- function(df, X, metric){
   subset<- df[which(df$metrics == metric),]
-  subset$Warm.Season<- factor(subset$Warm.Season)
+  subset$Season<- factor(subset$Season)
   
   if(metric == "R^2"){
     metric<- as.expression(bquote(~R^2))
@@ -78,14 +83,17 @@ ST_barplot<- function(df, X, metric){
   p<- ggplot(subset, aes(x=Level, y=value, fill=Group)) + 
   geom_bar_pattern(stat = "identity",
                    pattern_color = "black", pattern_fill = "black",
-                   aes(pattern = Warm.Season),
+                   aes(pattern = Season),
                    position = position_dodge()) + 
     scale_fill_manual(values=c(as.vector(CBF[6]), as.vector(CBF[7]),
-                               as.vector(CBF[2]) ))
+                               as.vector(CBF[2]) )) +
+    scale_pattern_manual(values = c(Cold = "pch", Warm = "none")) +
+    guides(fill = guide_legend(override.aes = list(pattern = "none")))
     # + geom_text(aes(label=number), size=2, 
     #           position = position_dodge(width = ))
   
-  return(p + ggtitle(metric) + xlab(as.expression(bquote(~PM[2.5] ~ "Level"))) +
+  return(p + ggtitle(metric) + 
+           xlab(as.expression(bquote(~PM[2.5] ~ "Level"))) +
            ylab(units) + # yscale +
     theme(axis.text.x = element_text(angle = 0, vjust = 0.5)) +
            theme(text = element_text(size = 16), legend.text=element_text(size=16),
@@ -114,12 +122,14 @@ apply_ST_barplot<- function(df, X){
 
 WS$Level<- factor(WS$Level, levels = c("Overall", "Medium", "High"))
 WS$Group<- factor(WS$Group, levels = c("Di vs Monitor", "Reid vs Monitor", "Di vs Reid"))
-WS$Warm.Season<- factor(WS$Var, levels = c("TRUE", "FALSE"))
+WS$Season<- "Cold"
+WS$Season[which(WS$Var == TRUE)]<- "Warm"
+WS$Season<- factor(WS$Season, levels = c("Warm", "Cold"))
 
 # # Test:
 # ST_barplot(WS, "Warm Season", "RMSD")
 
-WS_plots<- apply_ST_barplot(WS, "Warm Season")
+WS_plots<- apply_ST_barplot(WS, "Season")
 
 
 png("Plots/ST_WS_points_No-missing.png", width=900, height=800)
