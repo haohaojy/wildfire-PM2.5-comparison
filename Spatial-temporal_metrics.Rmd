@@ -147,9 +147,6 @@ valid<- readRDS("Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
 # State<- apply_ST(valid, "stateCode")
 # Season<- apply_ST(valid, "season")
 
-WS<- apply_ST(valid, "Warm_season")
-
-saveRDS(WS, "ST_WS.rds")
 # saveRDS(list(Year, State, Season, WS), "Spatio-temporal_results.rds")
 
 ## When we don't include points where either dataset is missing:
@@ -157,12 +154,16 @@ saveRDS(WS, "ST_WS.rds")
 na<- which(is.na(valid$PM_Di)|is.na(valid$PM_Reid))
 valid<- valid[-na,]
 
-Year<- apply_ST(valid, "year")
-State<- apply_ST(valid, "stateCode")
-Season<- apply_ST(valid, "season")
 WS<- apply_ST(valid, "Warm_season")
 
-saveRDS(list(Year, State, Season, WS), "Spatio-temporal_results_No-missing.rds")
+saveRDS(WS, "ST_WS.rds")
+
+# Year<- apply_ST(valid, "year")
+# State<- apply_ST(valid, "stateCode")
+# Season<- apply_ST(valid, "season")
+# WS<- apply_ST(valid, "Warm_season")
+
+# saveRDS(list(Year, State, Season, WS), "Spatio-temporal_results_No-missing.rds")
 
 ```
 

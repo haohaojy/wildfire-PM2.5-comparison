@@ -20,8 +20,12 @@ metrics<- function(mydata){
   MAD<- c(median(abs(mydata$diff_mo_po),na.rm=T),
   median(abs(mydata$diff_mo_ct),na.rm=T))
   
-  MR<- c(median(mydata$PM_Di/mydata$PM2.5,na.rm=T),
+  MedR<- c(median(mydata$PM_Di/mydata$PM2.5,na.rm=T),
   median(mydata$PM_Reid/mydata$PM2.5,na.rm=T))
+  
+  nonzero<- which(mydata$PM2.5 != 0)
+  MeanR<- c(mean(mydata$PM_Di[nonzero]/mydata$PM2.5[nonzero],na.rm=T),
+  mean(mydata$PM_Reid[nonzero]/mydata$PM2.5[nonzero],na.rm=T))
   
   RMSD<- c(sqrt(1/nrow(mydata)*sum((mydata$diff_mo_po)^2,na.rm=T)),
   sqrt(1/nrow(mydata)*sum((mydata$diff_mo_ct)^2,na.rm=T)))
@@ -73,7 +77,7 @@ metrics<- function(mydata){
   Temp.R2<- c((sum((temporal$mo-mean_mo)*(temporal$po-mean_grid)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$po-mean_grid)^2)))),
               (sum((temporal$mo-mean_mo)*(temporal$ct-mean_ct)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$ct-mean_ct)^2)))))
   
-  return(rbind(MB, NMB, MAD, MR, RMSD, R2, Spat.RMSD, Temp.RMSD, Spat.R2, Temp.R2))
+  return(rbind(MB, NMB, MAD, MedR, MeanR, RMSD, R2, Spat.RMSD, Temp.RMSD, Spat.R2, Temp.R2))
   # Actually, these are spatial and temporal correlations, not R^2
 }
 
@@ -119,7 +123,10 @@ metrics_justReid<- function(mydata){
   
   MAD<- median(abs(mydata$diff_mo_ct))
   
-  MR<- median(mydata$PM_Reid/mydata$PM2.5,na.rm=T)
+  MedR<- median(mydata$PM_Reid/mydata$PM2.5,na.rm=T)
+  
+  nonzero<- which(mydata$PM2.5 != 0)
+  MeanR<- mean(mydata$PM_Reid[nonzero]/mydata$PM2.5[nonzero],na.rm=T)
   
   RMSD<- sqrt(1/nrow(mydata)*sum((mydata$diff_mo_ct)^2,na.rm=T))
   
@@ -155,7 +162,7 @@ metrics_justReid<- function(mydata){
   
   Temp.R2<- (sum((temporal$mo-mean_mo)*(temporal$ct-mean_ct)))/(sqrt(sum((temporal$mo-mean_mo)^2)*(sum((temporal$ct-mean_ct)^2))))
   
-  return(c(MB, NMB, MAD, MR, RMSD, R2, Spat.RMSD, Temp.RMSD, Spat.R2, Temp.R2))
+  return(c(MB, NMB, MAD, MedR, MeanR, RMSD, R2, Spat.RMSD, Temp.RMSD, Spat.R2, Temp.R2))
   #Actually, these are spatial and temporal correlations, not R^2
 }
 
