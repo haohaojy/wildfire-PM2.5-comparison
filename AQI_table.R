@@ -56,13 +56,23 @@ xtable(Results[,2:6]*100)
 
 load("AQI_calcs.RData")
 
+Data<- Data[which(!is.na(Data$PM_Di)),]
+
 RvM<- table(Data[,c("Monitor_class", "Reid_class")])
 DvM<- table(Data[,c("Monitor_class", "Di_class")])
+DvM<- cbind(DvM, 0)
 
 RvM<- rbind(RvM, colSums(RvM))
 DvM<- rbind(DvM, colSums(DvM))
 RvM<- cbind(RvM, rowSums(RvM))
 DvM<- cbind(DvM, rowSums(DvM))
 
-xtable(RvM)
-xtable(DvM)
+xtable(RvM, digits=0)
+xtable(DvM, digits=0)
+
+## Percentages:
+RvM<- rbind(RvM, RvM[7,]/RvM[,7])
+DvM<- rbind(DvM, DvM[7,]/DvM[,7])
+
+(round(RvM[8,],2) - 1)*100
+(round(DvM[8,],2) - 1)*100
