@@ -40,7 +40,7 @@ Underclassified<- c(mean(Data$Di_class < Data$Monitor_class, na.rm = TRUE),
 Overclassified<- c(mean(Data$Di_class > Data$Monitor_class, na.rm = TRUE),
                    mean(Data$Reid_class > Data$Monitor_class, na.rm = TRUE))
 Large_misclass<- c(mean(abs(Data$Di_class - Data$Monitor_class) > 1, na.rm = TRUE),
-                   mean(abs(Data$Reid_class > Data$Monitor_class) > 1, na.rm = TRUE))
+                   mean(abs(Data$Reid_class - Data$Monitor_class) > 1, na.rm = TRUE))
 UHM<- c(mean((Data$Di_class <= 2)&(Data$Monitor_class > 2), na.rm = TRUE),
                    mean((Data$Reid_class <= 2)&(Data$Monitor_class > 2), na.rm = TRUE))
 
@@ -76,3 +76,49 @@ DvM<- rbind(DvM, DvM[7,]/DvM[,7])
 
 (round(RvM[8,],2) - 1)*100
 (round(DvM[8,],2) - 1)*100
+
+### Consider binary smoke exposure:
+
+Data$Reid_Smoke<- 0
+Data$Reid_Smoke[which(Data$Reid_class > 2)]<- 1
+Data$Di_Smoke<- 0
+Data$Di_Smoke[which(Data$Di_class > 2)]<- 1
+Data$Monitor_Smoke<- 0
+Data$Monitor_Smoke[which(Data$Monitor_class > 2)]<- 1
+
+RvM_binary<- table(Data[,c("Monitor_Smoke", "Reid_Smoke")])
+DvM_binary<- table(Data[,c("Monitor_Smoke", "Di_Smoke")])
+
+RvM_binary<- rbind(RvM_binary, colSums(RvM_binary))
+DvM_binary<- rbind(DvM_binary, colSums(DvM_binary))
+RvM_binary<- cbind(RvM_binary, rowSums(RvM_binary))
+DvM_binary<- cbind(DvM_binary, rowSums(DvM_binary))
+
+xtable(RvM_binary, digits=0)
+xtable(DvM_binary, digits=0)
+
+#### Calcs:
+(RvM_binary[1,2] + RvM_binary[2,1])/RvM_binary[3,3]
+(DvM_binary[1,2] + DvM_binary[2,1])/DvM_binary[3,3]
+
+## Sensitivity:
+
+RvM_binary[2,2]/RvM_binary[2,3]
+DvM_binary[2,2]/DvM_binary[2,3]
+
+## Specificity:
+
+RvM_binary[1,1]/RvM_binary[1,3]
+DvM_binary[1,1]/DvM_binary[1,3]
+
+## PPV:
+
+RvM_binary[2,2]/RvM_binary[3,2]
+DvM_binary[2,2]/DvM_binary[3,2]
+
+## NPV:
+
+RvM_binary[1,1]/RvM_binary[3,1]
+DvM_binary[1,1]/DvM_binary[3,1]
+
+
