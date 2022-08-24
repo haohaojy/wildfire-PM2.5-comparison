@@ -14,6 +14,7 @@ library(dplyr)
 library(ggplot2)
 library(cowplot)
 library(stringr)
+# library(ggrepel)
 
 valid<- readRDS("Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
 
@@ -42,24 +43,31 @@ plot_3_combos<- function(df, col_var, shape_var){
   if(col_var == "Season"){
     p1<- ggplot(df,
               aes_string(x="PM2.5", y="PM_Di", color = col_var, shape = shape_var))+
-    geom_point()+geom_abline(intercept=0,slope=1)+
-      geom_abline(intercept = 0,slope = lm(PM_Di ~ PM2.5 - 1, df)$coefficients, col = "#009E73") + 
+    geom_point()+geom_abline(intercept=0,slope=1)+ 
+      geom_point()+geom_abline(intercept=0,slope=1)+
+      geom_text(x=250, y=175, label="y=x", col = "black") +
+      geom_abline(intercept = 0,slope = lm(PM_Di ~ PM2.5 - 1, df)$coefficients, col = "#009E73") +
+      geom_text(x=850, y=135, label="Best fit", col = "#009E73") + 
     ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
     ylab("Di Estimates") + scale_color_manual(values = c("skyblue", "orange"))
     
     p2<- ggplot(df,
               aes_string(x="PM2.5",y="PM_Reid", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1)+
+      geom_text(x=225, y=275, label="y=x", col = "black") +
       geom_abline(intercept = 0,slope = lm(PM_Reid ~ PM2.5 - 1, df)$coefficients, col = "#009E73") +
+      geom_text(x=850, y=175, label="Best fit", col = "#009E73") +
     ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
-    ylab("Reid Estimates") + scale_color_manual(values = c("skyblue", "orange"))
+    ylab("Reid Estimates") + scale_color_manual(values = c("skyblue", "orange")) 
     
     shape_info<- rep(16,2)
     
     p3<- ggplot(df,
               aes_string(x="PM_Reid", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1)+
+      geom_text(x=200, y=175, label="y=x", col = "black") +
       geom_abline(intercept = 0,slope = lm(PM_Di ~ PM_Reid - 1, df)$coefficients, col = "#009E73") +
+      geom_text(x=275, y=150, label="Best fit", col = "#009E73") +
     ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
     ylab("Di Estimates") + guides(shape = "none") +
       scale_color_manual(values = c("skyblue", "orange"), name = "Season") 
@@ -74,14 +82,18 @@ plot_3_combos<- function(df, col_var, shape_var){
     p1<- ggplot(df,
               aes_string(x="PM2.5", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+geom_abline(intercept=0,slope=1)+
+      geom_text(x=250, y=175, label="y=x", col = "black") +
       geom_abline(intercept = 0,slope = lm(PM_Di ~ PM2.5 - 1, df)$coefficients, col = "#009E73") +
+      geom_text(x=850, y=135, label="Best fit", col = "#009E73") +
     ggtitle("Di vs. Monitor") + xlab("Validation PM2.5") +
     ylab("Di Estimates") + scale_colour_gradientn(colors = col_ramp(20))
     
     p2<- ggplot(df,
               aes_string(x="PM2.5",y="PM_Reid", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1)+
+      geom_text(x=225, y=275, label="y=x", col = "black") +
       geom_abline(intercept = 0,slope = lm(PM_Reid ~ PM2.5 - 1, df)$coefficients, col = "#009E73") +
+      geom_text(x=850, y=175, label="Best fit", col = "#009E73") +
     ggtitle("Reid vs. Monitor") + xlab("Validation PM2.5") +
     ylab("Reid Estimates") + scale_colour_gradientn(colors = col_ramp(20))
     
@@ -90,7 +102,9 @@ plot_3_combos<- function(df, col_var, shape_var){
     p3<- ggplot(df,
               aes_string(x="PM_Reid", y="PM_Di", color = col_var, shape = shape_var))+
     geom_point()+ geom_abline(intercept=0,slope=1)+
+      geom_text(x=200, y=175, label="y=x", col = "black") +
       geom_abline(intercept = 0,slope = lm(PM_Di ~ PM_Reid - 1, df)$coefficients, col = "#009E73") +
+      geom_text(x=275, y=150, label="Best fit", col = "#009E73") +
     ggtitle("Di vs. Reid") + xlab("Reid Estimates") +
     ylab("Di Estimates") + guides(shape = "none") + 
       scale_colour_gradientn(colors = col_ramp(20))
