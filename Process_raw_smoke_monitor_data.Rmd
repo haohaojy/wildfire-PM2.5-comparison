@@ -1,0 +1,74 @@
+---
+title: "daily monitor data"
+author: "Jiayuan Hao"
+date: "8/24/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(lubridate)
+library(dplyr)
+
+# set working directory
+
+```
+
+```{r}
+#### Airsis:
+load(file="2008-2021-Airsis.Rdata")
+data<-monitors$data
+meta<-monitors$meta
+data$datetime<-as.Date(data$datetime)
+data<-data[which(year(data$datetime)<2019 & year(data$datetime)>2007),]
+
+####Transform hourly data to daily data###
+data_daily<-aggregate(data, by=list(data$datetime), mean)
+####Match PM2.5 obs by monitorID
+merge_daily<-data.frame()
+for (i in 3:ncol(data_daily)){
+  #Extract single daily observation with monitor ID
+  df1 = data.frame(data_daily[,2],data_daily[,i])
+  df1$monitorID<-as.character(colnames(data_daily)[i])
+  colnames(df1) = c('date','PM2.5','monitorID')
+  #Extract single monitor data in meta
+  df2 = meta[which(meta$monitorID==colnames(data_daily)[i]),]
+  df_merge<-inner_join(df1[which(df1$PM2.5!="NA"),],df2,by=("monitorID" = "monitorID"))
+  merge_daily<-rbind(merge_daily,df_merge)
+}
+#merge_daily is the daily data
+
+write.csv(merge_daily, "airsis.csv")
+```
+
+
+```{r}
+#### WRCC:
+load(file="2008-2021-WRCC.Rdata")
+data<-monitors$data
+meta<-monitors$meta
+data$datetime<-as.Date(data$datetime)
+data<-data[which(year(data$datetime)<2019 & year(data$datetime)>2007),]
+
+####Transform hourly data to daily data###
+data_daily<-aggregate(data, by=list(data$datetime), mean)
+####Match PM2.5 obs by monitorID
+merge_daily<-data.frame()
+for (i in 3:ncol(data_daily)){
+  #Extract single daily observation with monitor ID
+  df1 = data.frame(data_daily[,2],data_daily[,i])
+  df1$monitorID<-as.character(colnames(data_daily)[i])
+  colnames(df1) = c('date','PM2.5','monitorID')
+  #Extract single monitor data in meta
+  df2 = meta[which(meta$monitorID==colnames(data_daily)[i]),]
+  df_merge<-inner_join(df1[which(df1$PM2.5!="NA"),],df2,by=("monitorID" = "monitorID"))
+  merge_daily<-rbind(merge_daily,df_merge)
+}
+#merge_daily is the daily data
+
+write.csv(merge_daily, "wrcc.csv")
+```
+

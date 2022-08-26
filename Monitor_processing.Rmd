@@ -13,13 +13,16 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(lubridate)
 library(xtable)
+
+# set working directory
+
 ```
 
 ```{r}
 #Import monitor data
-airsis<-read.csv('/Users/jiayuanhao/Documents/harvard/Rachel/data/comparision/airsis.csv')
+airsis<-read.csv('airsis.csv')
 airsis$group<-'airsis'
-wrcc<-read.csv('/Users/jiayuanhao/Documents/harvard/Rachel/data/comparision/wrcc.csv')
+wrcc<-read.csv('wrcc.csv')
 wrcc$group<-'wrcc'
 #Combine airsis with wrcc n=44627(airsis=34457, wrcc=10170)
 #summary(as.factor(monitor$group))
