@@ -1,4 +1,5 @@
 #### Generating Tables 1 and 2 (summary statistics of the validation set)
+## Author: Ellen Considine
 
 library(xtable)
 
