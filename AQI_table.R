@@ -1,3 +1,6 @@
+## Description: calculate AQI classifications based on PM2.5 concentrations
+## Author: Ellen Considine
+
 library(xtable)
 # library(devtools)
 # install_github("NSAPH-Software/NSAPHutils", ref="develop")
