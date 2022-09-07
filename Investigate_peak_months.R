@@ -1,5 +1,7 @@
+## Description: inspect peak months based on different metrics
+## Author: Ellen Considine
 
-setwd("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Wildfire data project")
+setwd()
 data<- readRDS("year_month_state_all.rds")
 
 Data<- data[which(data$CMAQ == "with_CMAQ"),]
