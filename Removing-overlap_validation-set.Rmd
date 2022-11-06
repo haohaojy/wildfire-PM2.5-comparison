@@ -107,21 +107,68 @@ reid_16_valid<- reid_16[which(!reid_16$row_id %in% reid_16_overlap$row_id),] # 2
 
 library(fields)
 
-s<- Sys.time()
-di_dist<- RdistEarth(as.matrix(distinct(di_overlap[,c("longitude", "latitude")])), 
-                     as.matrix(distinct(di_valid[,c("longitude", "latitude")])), 
-                       miles=FALSE)
-e<- Sys.time()
-e-s
-reid_16_dist<- RdistEarth(distinct(reid_16_overlap[,c("longitude", "latitude")]), 
-                     distinct(reid_16_valid[,c("longitude", "latitude")]), 
-                       miles=FALSE)
-reid_dist<- RdistEarth(distinct(reid_overlap[,c("longitude", "latitude")]), 
-                     distinct(reid_valid[,c("longitude", "latitude")]), 
-                       miles=FALSE)
+check_dists<- function(df1, df2){
+  DF1<- as.matrix(distinct(df1))
+  DF2<- as.matrix(distinct(df2))
+  n1<- nrow(DF1)
+  n2<- nrow(DF2)
+  closeby<- matrix(0, nrow=1, ncol=5)
+  
+  for(i in 1:n2){
+      dists<- rdist.earth.vec(DF1, cbind(rep(DF2[i,1], n1), 
+                                         rep(DF2[i,2], n1)), miles=FALSE)
+      pos<- which(dists <= 0.05) # within 50m
+      if(length(pos) > 0){
+        closeby<- rbind(closeby, cbind(DF1[pos,1], DF1[pos,2], 
+                                       rep(DF2[i,1],length(pos)),
+                                      rep(DF2[i,2],length(pos)), dists[pos]))
+      }
+      # print(paste(i, length(pos)))
+    }
 
+  return(closeby[-1,])
+}
 
+di_closeby<- check_dists(di_overlap[,c("longitude", "latitude")],
+                         di_valid[,c("longitude", "latitude")])
+reid_16_closeby<- check_dists(reid_16_overlap[,c("longitude", "latitude")],
+                         reid_16_valid[,c("longitude", "latitude")])
+reid_closeby<- check_dists(reid_overlap[,c("longitude", "latitude")],
+                         reid_valid[,c("longitude", "latitude")])
 
+get_final<- function(closeby, df1, df2){
+  del_pos<- c()
+  for(i in 1:nrow(closeby)){
+    dates1<- df1[which(df1$longitude == closeby[i,1] & df1$latitude == closeby[i,2]),
+                 "date"]
+    dates2<- df2[which(df2$longitude == closeby[i,3] & df2$latitude == closeby[i,4]),
+                 "date"]
+    if(length(dates1) <= length(dates2)){
+      Dates1<- unique(unlist(lapply(dates1, 
+                                    function(d) seq.Date(d-7, d+7, by = "day"))))
+      del_days<- dates2[which(dates2 %in% Dates1)]
+    }else{
+      Dates2<- unique(unlist(lapply(dates2, 
+                                    function(d) seq.Date(d-7, d+7, by = "day"))))
+      del_days<- dates1[which(dates1 %in% Dates2)]
+    }
+    
+    del_pos<- append(del_pos, which(df2$longitude == closeby[i,3] & 
+                                      df2$latitude == closeby[i,4] & 
+                                      df2$date %in% del_days))
+  }
+  
+  return(del_pos)
+}
+
+di_del_pos<- get_final(di_closeby, di_overlap[,c("longitude", "latitude", "date")],
+                         di_valid[,c("longitude", "latitude", "date")])
+reid_16_del_pos<- get_final(reid_16_closeby, 
+                            reid_16_overlap[,c("longitude", "latitude", "date")],
+                         reid_16_valid[,c("longitude", "latitude", "date")])
+reid_del_pos<- get_final(reid_closeby, 
+                         reid_overlap[,c("longitude", "latitude", "date")],
+                         reid_valid[,c("longitude", "latitude", "date")])
 
 ```
 
@@ -131,7 +178,7 @@ reid_dist<- RdistEarth(distinct(reid_overlap[,c("longitude", "latitude")]),
 
 ## Merge 2008-2016 data (Di and Reid with CMAQ):
 
-Reid_16<- reid_16[,c("date", "longitude", "latitude", "PM2.5",
+Reid_16<- reid_16_valid[-reid_16_del_pos,c("date", "longitude", "latitude", "PM2.5",
                      "DF_Lon", "DF_Lat", "Ens_pred", "diff_mo_ct",
                      "stateCode", "state", "GEOID", "dataset",
                      "month", "year", "season")]
@@ -140,27 +187,32 @@ names(Reid_16)<- c("date", "longitude", "latitude", "PM2.5",
                      "stateCode", "state", "GEOID", "dataset",
                      "month", "year", "season")
 
-Di_16<- di_valid[,c("date", "longitude", "latitude", 
+Di_16<- di_valid[-di_del_pos,c("date", "longitude", "latitude", 
                     "PM2.5", "PM_Di")]
-Di_16$Lon_Di<- di_valid$Lon
-Di_16$Lat_Di<- di_valid$Lat
-Di_16$dataset<- di_valid$group
+Di_16$Lon_Di<- di_valid$Lon[-di_del_pos]
+Di_16$Lat_Di<- di_valid$Lat[-di_del_pos]
+Di_16$dataset<- di_valid$group[-di_del_pos]
 Di_16[,c("longitude", "latitude", "PM2.5", 
                     "Lon_Di", "Lat_Di", "PM_Di")]<- apply(Di_16[,c("longitude", 
                                                              "latitude", "PM2.5", 
-                                                            "Lon_Di", "Lat_Di", "PM_Di")],
+                                                            "Lon_Di", "Lat_Di",
+                                                            "PM_Di")],
                                                     MARGIN = 2, as.numeric)
 
 Di_16$PM2.5<- round(Di_16$PM2.5, 3)
 Reid_16$PM2.5<- round(Reid_16$PM2.5, 3)
 
-# All_16<- inner_join(Reid_16, Di_16) # 26787 obs
-# apply(All_16, MARGIN = 2, function(y) sum(is.na(y))) # missing 17 obs from Di
+# All_16<- inner_join(Reid_16, Di_16) # 19853 obs
+# apply(All_16, MARGIN = 2, function(y) sum(is.na(y))) # missing 3 obs from Di
 
-All_16<- full_join(Reid_16, Di_16) # 29109 obs 
-apply(All_16, MARGIN = 2, function(y) sum(is.na(y))) # missing 112 obs from Reid, 2210 from Di (in addition to 17 above)
+All_16<- full_join(Reid_16, Di_16) # 19920 obs 
+apply(All_16, MARGIN = 2, function(y) sum(is.na(y))) # missing 35 obs from Reid and 35 obs from Di, but different locations and days
 summary(All_16[which(is.na(All_16$PM_Reid)), "PM2.5"])
+  #  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 0.000   1.312   4.292   6.383   8.042  21.250
 summary(All_16[which(is.na(All_16$PM_Di)), "PM2.5"])
+  # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  # 0.000   0.000   2.417  33.794  10.709 356.167
 
 All_16$diff_mo_po<- All_16$PM2.5 - All_16$PM_Di
 
@@ -169,14 +221,18 @@ saveRDS(All_16, "Merged_monitor_Di_Reid_with_CMAQ.rds")
 
 ## Clean 2008-2018 data (Reid estimates without CMAQ + monitor obs):
 
-Reid_valid<- reid_valid[,c("date", "longitude", "latitude", "PM2.5",
+Reid_valid<- reid_valid[-reid_del_pos,c("date", "longitude", "latitude", "PM2.5",
                      "DF_Lon", "DF_Lat", "Ens_pred", "group")]
 
-reid_valid$state_id<- str_pad(reid_valid$state_id, 2, pad = "0")
-reid_valid$County_FIPS<- str_pad(reid_valid$County_FIPS, 3, pad = "0")
-reid_valid$Tract_code<- str_pad(reid_valid$Tract_code, 6, pad = "0")
-Reid_valid$GEOID<- paste0(reid_valid$state_id, reid_valid$County_FIPS, 
-                          reid_valid$Tract_code)
+reid_valid$state_id[-reid_del_pos]<- str_pad(reid_valid$state_id[-reid_del_pos],
+                                             2, pad = "0")
+reid_valid$County_FIPS[-reid_del_pos]<- str_pad(reid_valid$County_FIPS[-reid_del_pos],
+                                                3, pad = "0")
+reid_valid$Tract_code[-reid_del_pos]<- str_pad(reid_valid$Tract_code[-reid_del_pos],
+                                6, pad = "0")
+Reid_valid$GEOID<- paste0(reid_valid$state_id[-reid_del_pos], 
+                          reid_valid$County_FIPS[-reid_del_pos], 
+                          reid_valid$Tract_code[-reid_del_pos])
 
 names(Reid_valid)<- c("date", "longitude", "latitude", "PM2.5",
                      "Lon_Reid", "Lat_Reid", "PM_Reid", "dataset",
