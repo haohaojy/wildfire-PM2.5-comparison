@@ -103,6 +103,29 @@ reid_16_valid<- reid_16[which(!reid_16$row_id %in% reid_16_overlap$row_id),] # 2
 ```
 
 ```{r}
+#### Check distances + days of included vs excluded AirFire points:
+
+library(fields)
+
+s<- Sys.time()
+di_dist<- RdistEarth(as.matrix(distinct(di_overlap[,c("longitude", "latitude")])), 
+                     as.matrix(distinct(di_valid[,c("longitude", "latitude")])), 
+                       miles=FALSE)
+e<- Sys.time()
+e-s
+reid_16_dist<- RdistEarth(distinct(reid_16_overlap[,c("longitude", "latitude")]), 
+                     distinct(reid_16_valid[,c("longitude", "latitude")]), 
+                       miles=FALSE)
+reid_dist<- RdistEarth(distinct(reid_overlap[,c("longitude", "latitude")]), 
+                     distinct(reid_valid[,c("longitude", "latitude")]), 
+                       miles=FALSE)
+
+
+
+
+```
+
+```{r}
 
 #### Merge and clean the final datasets...
 
