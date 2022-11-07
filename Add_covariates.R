@@ -52,14 +52,21 @@ Locs<- t(apply(locs[,c("longitude", "latitude")], MARGIN = 1,
 Loc_df<- as.data.frame(Locs)
 Loc_df$longitude<- locs$longitude
 Loc_df$latitude<- locs$latitude
+Loc_df$GEOID<- NULL
 
 all_16$stateCode<- NULL
 all_16$state<- NULL
-all_16$GEOID<- NULL
+# all_16$GEOID<- NULL
 
 All_16<- inner_join(all_16, Loc_df)
 All_16$Warm_season<- sapply(All_16$month, warm_season)
+All_16$GEOID<- All_16$GEOID.x
+All_16$GEOID[which(is.na(All_16$GEOID))]<- All_16$GEOID.y[which(is.na(All_16$GEOID))]
 
 saveRDS(All_16, "Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
+
+
+
+
 
 
