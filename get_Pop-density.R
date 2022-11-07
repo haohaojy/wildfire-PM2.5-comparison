@@ -1,4 +1,6 @@
-# install.packages("tigris")
+## Description: process population density data for later use in population density weighting
+## Author: Ellen Considine
+
 install.packages("https://cran.r-project.org/src/contrib/tigris_1.6.1.tar.gz",
                  repos=NULL, method="libcurl")
 library(tigris)
