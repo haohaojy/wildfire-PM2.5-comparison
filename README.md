@@ -18,6 +18,7 @@
 * Reid_processing.Rmd -- Aggregates any duplicated observations in the Reid dataset.
 * Nearest points.Rmd -- For each monitor observation, finds the nearest Reid and Di observations.
 * Add_covariates.R -- Making sure the spatial and temporal covariates (e.g. "GEOID" and "warm season") were filled in and consistent throughout the main validation set (2008-2016).
+* get_Pop-density.R -- obtaining and merging in population density data to enable weighting by population density
  
 ## Obtaining data:
 * Although the validation monitor observations were obtained using the R package PWFSLSmoke, we actually were sent the data resulting from this query by a member of the AirFire research team.
