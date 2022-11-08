@@ -101,76 +101,73 @@ PM25_knnx<-PM25_knnx[,c("date","PM2.5","Lon","Lat","stateCode","group","year","D
 saveRDS(PM25_knnx,'/Users/jiayuanhao/Documents/Harvard/Rachel/data/update/reid_w_monitor_knnx.rds')
 #saveRDS(PM25_knnx,'/Users/jiayuanhao/Documents/Harvard/Rachel/data/update/reid_w_EPA_knnx.rds') #EPA
 
-```
+monitor_reid<-PM25_knnx[,c("Lat","Lon","PM2.5","date","stateCode","group","year","DF_Lon","DF_Lat","state_id")]
 
-
-
-```{r}
-#Find the index of nearest Di point of Reid data
-#We look for the index of each nearest Di point, then loop through daily Di data using these indexes.
-knnx<-data.frame(matrix(unlist(get.knnx(WF[,c('Easting','Northing')],grid_sites[,c('Easting','Northing')],k=1)),ncol=2, byrow=F))
-
-######Using location to extract nearest Di data 
-#gridsite
-grid_sites<- readRDS("/n/home02/haohaojy/Di/gridsites.frame.rds")
-coords<- grid_sites[,c("Lon", "Lat")]
-
-for (y in 2008:2009){
-  filename<-list.files(paste0("/net/rcstorenfs02/ifs/rc_labs/dominici_lab/lab/data/qd_predictions_ensemble/",y))
-  knnx<-data.frame()
-  for (i in 1:length(filename)){
-    if (as.Date(as.Date(as.Date(paste0(y,"-01-01"))+i-1)) %in% as.Date(monitor_knnx$date) == TRUE){
-      Di_grid<-readRDS(paste0("/net/rcstorenfs02/ifs/rc_labs/dominici_lab/lab/data/qd_predictions_ensemble/",y,"/",filename[i]))
-      pm <- data.frame(t(Di_grid))
-      pm <- cbind(grid_sites,pm)
-      pm_monitor<-data.frame(pm[knnx$X1,])[,c('Lon','Lat','t.Di_grid.')]
-      names(pm_monitor)<-c('Lon','Lat','PM_Di')
-      pm_monitor$Date=as.Date(as.Date(as.Date(paste0(y,"-01-01"))+i-1))
-      knnx<-rbind(knnx,pm_monitor)
-    }
-  }  
-  savename=paste0('/n/home02/haohaojy/monitor/portable/Reid_Di_',y,'.rds')
-  saveRDS(knnx,file=savename)
-}
-
-#Match daily Di with daily Reid
-states<-c('arizona','california','colorado','idaho','montana','nevada','new mexico','oregon','utah','washington','wyoming')
-states_id<- c(04,06,08,16,30,32,35,41,49,53,56)
-
-for (s in 1:11){
-  load(paste0('/n/home02/haohaojy/Reid_PM2.5/PM2.5_with_CMAQ/A_Ensemble_preds_with_CMAQ_',states[s],'.RData'))
-  WF<-DF[,c('County_FIPS','Tract_code','Lon','Lat','Date','Ens_pred')]
-  WF<-WF[which(!is.na(WF$Tract_code)),]
-  WF$state<-states[s]
-  WF$stateID<-states_id[s]
-  Reid_Di<-data.frame()
-  for (i in 2008:2016){
-    filename<-paste0("/n/home02/haohaojy/monitor/portable/Reid_Di_",i,".rds")
-    Di<-readRDS(filename)
-    p<-inner_join(Di,WF,by=c("Lon_DF"="Lon","Lat_DF"="Lat","Date"="Date"))
-    Reid_Di<-rbind(Reid_Di,p)
-  }
-  savename<-paste0("/n/home02/haohaojy/Combine/point/",states[s],"_point.rds")
-  saveRDS(Reid_Di,file=savename)
-}
-
-```
-
-```{r}
-#Combine monitor with Reid's and Di information (with CMAQ)
-#Reid has already combined with its nearest Di
-monitor_reid<-readRDS('/n/home02/haohaojy/monitor/update/reid_w_monitor_knnx.rds')
-names(monitor_reid)
-monitor_reid<-monitor_reid[,c("Lat","Lon","PM2.5","date","stateCode","group","year","DF_Lon","DF_Lat","state_id")]
-
-monitor_reid_di<-data.frame()
+monitor_reid<-data.frame()
 for (i in 1:11){
-  filename<-paste0('/n/home02/haohaojy/Combine/point/A_',states[i],'_point.rds')
+  filename<-paste0('/n/home02/haohaojy/Combine/point/',states[i],'_point.rds')
   DF<-readRDS(filename)
   DF<-DF[which(DF$Tract_code != "NA"),]
   monitor_reid_di_knnx=inner_join(monitor_reid,DF,by=c("DF_Lon"="Lon_DF","DF_Lat"="Lat_DF","date"="Date"))
-  monitor_reid_di<-rbind(monitor_reid_di,monitor_reid_di_knnx)
+  monitor_reid<-rbind(monitor_reid,monitor_reid_di_knnx)
 }
+
+```
+
+
+
+```{r}
+#Match monitor with nearest Reid
+#Read USGridSite
+grid_sites<- readRDS("/Users/jiayuanhao/Documents/Rachel/data/Di/r-code/USGridSite.rds")
+
+#Project data into meters
+coords<- grid_sites[,c("Lon", "Lat")]
+coordinates(coords)<- c("Lon", "Lat")
+projection(coords)<- "+proj=longlat +ellps=GRS80 +datum=NAD83 +no_defs"
+grid_df<- SpatialPointsDataFrame(coords, grid_sites[,c("Lon", "Lat")])
+Grid<- spTransform(grid_df, CRS("+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"))
+grid_sites$Easting<- coordinates(Grid)[,1]
+grid_sites$Northing<- coordinates(Grid)[,2]
+```
+
+
+```{r}
+#Find the index of nearest Di point
+knnx_one<-data.frame(matrix(unlist(get.knnx(grid_sites[,c('Easting','Northing')],PM25_all[,c('Easting','Northing')],k=1)),ncol=2, byrow=F))
+monitor_di_index<-data.frame(knnx_one$X1)
+#saveRDS(monitor_di_index,'/Users/jiayuanhao/Documents/Rachel/data/comparision/monitor_di_index.rds')
+```
+
+```{r}
+for (y in 2008:2016){
+  monitor_di<-data.frame()
+  filename<-list.files(paste0("/net/rcstorenfs02/ifs/rc_labs/dominici_lab/lab/data/qd_predictions_ensemble/",y))
+  for (i in 1:length(filename)){
+    date_di<-as.Date(as.Date(as.Date(paste0(y,"-01-01"))+i-1))
+    if (date_di %in% as.Date(monitor_clean$date) == TRUE){
+      Di_grid<-readRDS(paste0("/net/rcstorenfs02/ifs/rc_labs/dominici_lab/lab/data/qd_predictions_ensemble/",y,"/",filename[i]))
+      pm <- data.frame(t(Di_grid))
+      pm <- cbind(grid_sites,pm)
+      pm_monitor<-data.frame(pm[Index$knnx_one.X1,])[,c('Lon','Lat','t.Di_grid.')]
+      names(pm_monitor)<-c('Lon','Lat','PM_Di')
+      pm_monitor$Date=date_di
+      pm_monitor$index=Index
+      monitor_di_join<-distinct(inner_join(monitor_clean,pm_monitor,by=c('date'='Date','di_index'='index')))
+      monitor_di<-rbind(monitor_di,monitor_di_join)
+    }
+  }  
+  savename=paste0('/n/home02/haohaojy/monitor/portable/monitor_di_match_',y,'.rds')
+  saveRDS(monitor_di,file=savename)
+}
+
+```
+
+```{r}
+#Combine monitor, Reid and Di
+monitor_reid_di<-inner_join(monitor_reid,monitor_di,by=c("Lat"="lat","Lon"="Lon", "Date"="Date"))
+```
+
 
 ## Note Di NA's before proceeding:
 #di_na_pos<- which(is.na(monitor_reid_di$PM_grid)) # 17 obs
