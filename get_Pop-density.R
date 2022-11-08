@@ -42,7 +42,7 @@ Population<- data.frame(GEOID = Pop$GEOID, Population = Pop$estimate)
 PD<- inner_join(Population, Geodata, by="GEOID")
 PD$Pop_density<- PD$Population / (PD$land_area / 2589988)
 
-#### Merge in with PM data:
+#### Merge in with Reid-Di 2008-2016 data:
 
 valid$id<- 1:nrow(valid)
 new<- inner_join(PD, valid, by="GEOID")
@@ -50,5 +50,31 @@ new<- inner_join(PD, valid, by="GEOID")
 Missing<- valid[which(!valid$id %in% new$id),] # these GEOIDs are all places we are missing Reid data
 
 saveRDS(new, "Revisions_Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
+
+
+#### Merge in with Reid 2008-2018 data:
+
+all_reid<- readRDS("Merged_monitor_Reid_without_CMAQ.rds")
+
+new_reid<- inner_join(PD, all_reid, by="GEOID")
+
+saveRDS(new_reid, "Revisions_Merged_monitor_Reid_without_CMAQ.rds")
+
+
+#### Merge in with Reid 2008-2018 data:
+
+EPA<- readRDS("Merged_EPA_Di_Reid_with_CMAQ.rds")
+EPA$GEOID[which(EPA$GEOID == "04019470400")]<- "04019005200"
+EPA$GEOID[which(EPA$GEOID == "53027950300")]<- "53039950302"
+EPA$id<- 1:nrow(EPA)
+
+new_epa<- inner_join(PD, EPA, by="GEOID")
+
+Missing_epa<- EPA[which(!EPA$id %in% new_epa$id),] 
+
+saveRDS(new_epa, "Revisions_Merged_EPA_Di_Reid_with_CMAQ.rds")
+
+
+
 
 
