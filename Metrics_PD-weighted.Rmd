@@ -1,0 +1,225 @@
+---
+title: "Metrics weighted by population density"
+author: "Ellen Considine"
+date: "2022-11-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# install.packages("https://cran.r-project.org/src/contrib/MetricsWeighted_0.5.4.tar.gz",
+#                  repos=NULL, method="libcurl")
+library(MetricsWeighted)
+library(data.table)
+library(xtable)
+
+Metrics<- c("Mean Bias (0)", "Normalized \\mbox{Mean Bias (0)}", "\\mbox{Median Absolute} \\mbox{Difference} (0)", "\\mbox{Median Ratio (1)}", " Mean Ratio (1)", "RMSD (0)", "$R^2$ (1)", "\\mbox{Spatial RMSD (0)}", "\\mbox{Temporal RMSD (0)}", "Spatial \\mbox{Correlation (1)}", "Temporal \\mbox{Correlation (1)}")
+
+
+metrics<- function(mydata){
+  MB<- c(weighted.mean(-mydata$diff_mo_po, mydata$Pop_density, na.rm=T),
+  weighted.mean(-mydata$diff_mo_ct, mydata$Pop_density, na.rm=T))
+  
+  NMB<- c(weighted.mean(-mydata$diff_mo_po,mydata$Pop_density,
+                        na.rm=T)/weighted.mean(mydata$PM2.5, mydata$Pop_density),
+  weighted.mean(-mydata$diff_mo_ct, mydata$Pop_density,
+                na.rm=T)/weighted.mean(mydata$PM2.5, mydata$Pop_density))
+  
+  MAD<- c(weighted_quantile(abs(mydata$diff_mo_po), mydata$Pop_density, 
+                            probs = 0.5, na.rm=T),
+  weighted_quantile(abs(mydata$diff_mo_ct), mydata$Pop_density, 
+                            probs = 0.5, na.rm=T))
+  
+  MedR<- c(weighted_quantile(mydata$PM_Di/mydata$PM2.5, mydata$Pop_density, 
+                            probs = 0.5, na.rm=T),
+  weighted_quantile(mydata$PM_Reid/mydata$PM2.5, mydata$Pop_density, 
+                            probs = 0.5, na.rm=T))
+  
+  nonzero<- which(mydata$PM2.5 != 0)
+  MeanR<- c(weighted.mean(mydata$PM_Di[nonzero]/mydata$PM2.5[nonzero],
+                          mydata$Pop_density[nonzero], na.rm=T),
+  weighted.mean(mydata$PM_Reid[nonzero]/mydata$PM2.5[nonzero], 
+                mydata$Pop_density[nonzero], na.rm=T))
+  
+  RMSD<- c(sqrt(weighted.mean((mydata$diff_mo_po)^2, mydata$Pop_density, na.rm=T)),
+  sqrt(weighted.mean((mydata$diff_mo_ct)^2, mydata$Pop_density, na.rm=T)))
+  
+  R2<- c(weighted_cor(mydata$PM_Di, mydata$PM2.5, mydata$Pop_density, na.rm=T)^2,
+  weighted_cor(mydata$PM_Reid, mydata$PM2.5, mydata$Pop_density, na.rm=T)^2)
+  
+  ## Spatial and Temporal RMSD:
+  Spatial<-aggregate(data=mydata,diff_mo_po~GEOID + Pop_density,FUN=mean,na.rm=T)
+  colnames(Spatial)<-c('GEOID', 'Pop_density', 'PM')
+  Spatial.2<-aggregate(data=mydata,diff_mo_ct~GEOID + Pop_density,FUN=mean,na.rm=T)
+  colnames(Spatial.2)<-c('GEOID', 'Pop_density', 'PM')
+  Spat.RMSD<- c(sqrt(weighted.mean((Spatial$PM)^2, Spatial$Pop_density)),
+              sqrt(weighted.mean((Spatial.2$PM)^2, Spatial.2$Pop_density)))
+   
+  DT<- data.table(mydata)
+  Temporal<- DT[,list(PM = weighted.mean(diff_mo_po,Pop_density,na.rm=T)),by=date]
+  Temporal.2<-DT[,list(PM = weighted.mean(diff_mo_ct,Pop_density,na.rm=T)),by=date]
+  Temp.RMSD<- c(sqrt(mean((Temporal$PM)^2)),
+                sqrt(mean((Temporal.2$PM)^2)))
+  
+  ## Spatial and Temporal R^2:
+  a<-aggregate(data=mydata,PM2.5~GEOID + Pop_density,FUN=mean,na.rm=T)
+  colnames(a)=c('GEOID', 'Pop_density', 'mo')
+  b<-aggregate(data=mydata,PM_Reid~GEOID + Pop_density,FUN=mean,na.rm=T)
+  colnames(b)=c('GEOID', 'Pop_density', 'ct')
+  c<-aggregate(data=mydata,PM_Di~GEOID + Pop_density,FUN=mean,na.rm=T)
+  colnames(c)=c('GEOID', 'Pop_density', 'po')
+  
+  spatial=merge(a,b,by=c('GEOID', 'Pop_density'))
+  spatial=merge(spatial,c,by=c('GEOID', 'Pop_density'))
+  mean_mo<-weighted.mean(spatial$mo, spatial$Pop_density)
+  mean_ct<-weighted.mean(spatial$ct, spatial$Pop_density)
+  mean_grid<-weighted.mean(spatial$po, spatial$Pop_density)
+  Spat.cor<- c(weighted_cor(spatial$mo-mean_mo, spatial$po-mean_grid,
+                            spatial$Pop_density),
+               weighted_cor(spatial$mo-mean_mo, spatial$ct-mean_ct,
+                            spatial$Pop_density))
+  
+  a<- DT[,list(mo = weighted.mean(PM2.5,Pop_density,na.rm=T)),by=date]
+  b<- DT[,list(ct = weighted.mean(PM_Reid,Pop_density,na.rm=T)),by=date]
+  c<- DT[,list(po = weighted.mean(PM_Di,Pop_density,na.rm=T)),by=date]
+  temporal=merge(a,b,by=c('date'))
+  temporal=merge(temporal,c,by=c('date'))
+  mean_mo<-mean(temporal$mo)
+  mean_ct<-mean(temporal$ct)
+  mean_grid<-mean(temporal$po)
+  Temp.cor<- c(cor(temporal$mo-mean_mo, temporal$po-mean_grid), 
+               cor(temporal$mo-mean_mo, temporal$ct-mean_ct))
+  
+  results<- rbind(MB, NMB, MAD, MedR, MeanR, RMSD, R2, Spat.RMSD, Temp.RMSD, 
+               Spat.cor, Temp.cor)
+  row.names(results)<- NULL
+  return(results)
+}
+
+```
+
+
+```{r}
+## Validation data set:
+valid<- readRDS("Revisions_Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
+
+na<- which(is.na(valid$PM_Di)|is.na(valid$PM_Reid))
+valid<- valid[-na,]
+valid_16<- valid[,c("longitude", "latitude", "date")] # for later use...
+
+X<- data.frame(round( cbind(metrics(valid), metrics(valid[which(valid$PM2.5 >= 12.1),]),
+             metrics(valid[which(valid$PM2.5 >= 35.5),])), 2 ))
+row.names(X)<- Metrics
+print(xtable(X), sanitize.rownames.function=identity, hline.after = 1:nrow(X))
+             
+```
+
+```{r}
+
+## EPA comparison dataset:
+EPA<- readRDS("Merged_EPA_Di_Reid_with_CMAQ.rds")
+EPA$diff_mo_ct<- EPA$PM2.5-EPA$PM_Reid
+EPA$diff_mo_po<- EPA$PM2.5-EPA$PM_Di
+
+EPA<- EPA[which(!is.na(EPA$PM_Di)),] # 56 obs
+
+epa<- round( cbind(metrics(EPA), metrics(EPA[which(EPA$PM2.5 >= 12.1),]),
+             metrics(EPA[which(EPA$PM2.5 >= 35.5),])), 2 )
+
+xtable(epa)
+
+```
+
+```{r}
+## Function to use when we only have Reid data (for non-CMAQ dataset):
+
+metrics_justReid<- function(mydata){
+  MB<- weighted.mean(-mydata$diff_mo_ct, mydata$Pop_density, na.rm=T)
+  
+  NMB<- weighted.mean(-mydata$diff_mo_ct, mydata$Pop_density,
+                na.rm=T)/weighted.mean(mydata$PM2.5, mydata$Pop_density)
+  
+  MAD<- weighted_quantile(abs(mydata$diff_mo_ct), mydata$Pop_density, 
+                            probs = 0.5, na.rm=T)
+  
+  MedR<- weighted_quantile(mydata$PM_Reid/mydata$PM2.5, mydata$Pop_density, 
+                            probs = 0.5, na.rm=T)
+  
+  nonzero<- which(mydata$PM2.5 != 0)
+  MeanR<- weighted.mean(mydata$PM_Reid[nonzero]/mydata$PM2.5[nonzero], 
+                mydata$Pop_density[nonzero], na.rm=T)
+  
+  RMSD<- sqrt(weighted.mean((mydata$diff_mo_ct)^2, mydata$Pop_density, na.rm=T))
+  
+  R2<- weighted_cor(mydata$PM_Reid, mydata$PM2.5, mydata$Pop_density, na.rm=T)^2
+  
+  ## Spatial and Temporal RMSD:
+  Spatial.2<-aggregate(data=mydata,diff_mo_ct~GEOID + Pop_density,FUN=mean,na.rm=T)
+  colnames(Spatial.2)<-c('GEOID', 'Pop_density', 'PM')
+  Spat.RMSD<- sqrt(weighted.mean((Spatial.2$PM)^2, Spatial.2$Pop_density))
+   
+  DT<- data.table(mydata)
+  Temporal.2<-DT[,list(PM = weighted.mean(diff_mo_ct,Pop_density,na.rm=T)),by=date]
+  Temp.RMSD<- sqrt(mean((Temporal.2$PM)^2))
+  
+  ## Spatial and Temporal R^2:
+  a<-aggregate(data=mydata,PM2.5~GEOID + Pop_density,FUN=mean,na.rm=T)
+  colnames(a)=c('GEOID', 'Pop_density', 'mo')
+  b<-aggregate(data=mydata,PM_Reid~GEOID + Pop_density,FUN=mean,na.rm=T)
+  colnames(b)=c('GEOID', 'Pop_density', 'ct')
+  
+  spatial=merge(a,b,by=c('GEOID', 'Pop_density'))
+  mean_mo<-weighted.mean(spatial$mo, spatial$Pop_density)
+  mean_ct<-weighted.mean(spatial$ct, spatial$Pop_density)
+  Spat.cor<- weighted_cor(spatial$mo-mean_mo, spatial$ct-mean_ct,
+                            spatial$Pop_density)
+  
+  a<- DT[,list(mo = weighted.mean(PM2.5,Pop_density,na.rm=T)),by=date]
+  b<- DT[,list(ct = weighted.mean(PM_Reid,Pop_density,na.rm=T)),by=date]
+  temporal=merge(a,b,by=c('date'))
+  mean_mo<-mean(temporal$mo)
+  mean_ct<-mean(temporal$ct)
+  Temp.cor<- cor(temporal$mo-mean_mo, temporal$ct-mean_ct)
+  
+  results<- rbind(MB, NMB, MAD, MedR, MeanR, RMSD, R2, Spat.RMSD, Temp.RMSD, 
+               Spat.cor, Temp.cor)
+  results[,1]<- c("Mean Bias (0)", "Normalized Mean Bias (0)", "\mbox{Median Absolute} \mbox{Difference} (0)", "\mbox{Median Ratio (1)}", " Mean Ratio (1)", "RMSD (0)", "$R^2$ (1)", "\mbox{Spatial RMSD} (0)", "Temporal RMSD (0)", "Spatial \mbox{Correlation (1)}", "Temporal \mbox{Correlation (1)}")
+  
+  return(results)
+}
+
+
+```
+
+
+```{r}
+
+#### Investigating Reid estimates without CMAQ
+valid<- readRDS("Merged_monitor_Reid_without_CMAQ.rds")
+
+## Evaluating Reid estimates 2008-2016:
+
+# reid_16<- valid[which(valid$date < "2017-01-01"),]
+reid_16<- inner_join(valid_16, valid)
+reid_16<- distinct(reid_16) 
+
+Reid_16<- round( cbind(metrics_justReid(reid_16), 
+                          metrics_justReid(reid_16[which(reid_16$PM2.5 >= 12.1),]),
+                          metrics_justReid(reid_16[which(reid_16$PM2.5 >= 35.5),])), 2 )
+
+## Evaluating Reid estimates in 2017 and 2018:
+
+reid_17.18<- valid[which(valid$date >= "2017-01-01"),]
+  
+Reid_17.18<- round( cbind(metrics_justReid(reid_17.18), 
+                          metrics_justReid(reid_17.18[which(reid_17.18$PM2.5 >= 12.1),]),
+                          metrics_justReid(reid_17.18[which(reid_17.18$PM2.5
+                                                            >= 35.5),])), 2 )
+
+xtable(cbind(Reid_17.18, Reid_16))
+
+```
+
