@@ -7,8 +7,8 @@
 
 ## Calculating results:
 * Investigate_peak_months.R -- analyze the mean and maximum values in the Reid and Di datasets, across state-month-year combinations
-* Summary-stats_validation-set.R -- Generating summary statistics of the validation set
-* Metrics.Rmd -- Calculating the main comparison results (i.e. Di vs Monitor and Reid vs Monitor)
+* Weighted-summary-stats_validation-set.R -- Generating summary statistics of the validation set
+* Metrics_weighted.Rmd -- Calculating the main comparison results (i.e. Di vs Monitor and Reid vs Monitor)
 * Spatial-temporal_metrics.Rmd -- Calculating spatial and temporal metrics by subset (e.g. warm season vs cold season), and comparing the Reid and Di results
 * AQI_table.R -- Calculating the AQI classification and binary classification results
 
