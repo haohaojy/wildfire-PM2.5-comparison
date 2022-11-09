@@ -54,24 +54,28 @@ colnames(di_county)<-c("State_FIPS","County_FIPS","season","PM2.5")
 
 ```{r}
 #####Read county map data
-Countymap<- readOGR("/Users/jiayuanhao/Documents/Harvard/Rachel/data/census data/tl_2010_us_county10/tl_2010_us_county10.shp") # load county map shapefile
+# Countymap<- readOGR("/Users/jiayuanhao/Documents/Harvard/Rachel/data/census data/tl_2010_us_county10/tl_2010_us_county10.shp") # load county map shapefile
+Countymap<- readOGR("C:/Users/ellen/OneDrive/MyDocs/Graduate Research/Counties_shapefile/tl_2010_us_county10.shp")
 Countymap$State_FIPS <- sapply(Countymap$STATEFP10, function(x) as.numeric(as.character(x)))
 Countymap$County_FIPS<-sapply(Countymap$COUNTYFP10,function(x) as.numeric(as.character(x)))
 Countymap$SHP_Index<- 1:dim(Countymap)[1]
+
 ```
 
 ```{r}
 ############
 nclr<- 8
 plotclr<- brewer.pal(nclr, "YlOrRd")
-#Mao function
-my_map.fn1<- function(shp, data, nclr, plotclr, Title){
+
+#Map function
+my_map.fn1<- function(shp, data, nclr, plotclr, Title, plotvar = "PM2.5",
+                      breaks = c(0,2,3,4,5,6,8,10,13,16)){
   
-  plotvar <- data$PM2.5
+  plotvar <- data[,plotvar]
   class <- classIntervals(plotvar,
                           nclr,
                           style = "fixed", 
-                          fixedBreaks = c(0,2,4,6,8,12,23,35,60))
+                          fixedBreaks = breaks)
   colcode <- findColours(class, plotclr)
   
   plot(shp[data$SHP_Index,], col = colcode)#, xlim = c(-, -110))
@@ -86,6 +90,15 @@ my_map.fn1<- function(shp, data, nclr, plotclr, Title){
          bty = "n")
 }
 ```
+
+```{r}
+### Read in county data:
+
+reid_county<- readRDS("reid_county.rds")
+di_county<- readRDS("di_county.rds")
+
+```
+
 
 ```{r}
 #Season_reid
@@ -124,36 +137,19 @@ df_plot$diff<-df_plot$PM2.5_Reid-df_plot$PM2.5_Di
 
 ####Diff
 nclr<- 9
-plotclr<- brewer_pal(palette = "RdYlBu", direction = -1)(nclr)
+plotclr<- brewer_pal(palette = "PuOr", direction = -1)(nclr)
 
-my_map.fn2<- function(shp, data, nclr, plotclr, Title){
-  
-  plotvar <- data$diff
-  class <- classIntervals(plotvar,
-                          nclr,
-                          style = "fixed", 
-                          fixedBreaks = c(-5,-3,-2,-1,0,1,2,3,5,16))
-  colcode <- findColours(class, plotclr)
-  
-  plot(shp[data$SHP_Index,], col = colcode)#, xlim = c(-, -110))
-  title(Title, line=2)
-  legend(x= "bottomleft",inset = c(-0.4,-0.4), # position
-         legend = names(attr(colcode, "table")),
-         horiz=F,
-         xpd = T,
-         title = as.expression(bquote(~PM[2.5] ~ "Levels (" * mu * "g/"*m^3*")")),
-         fill = attr(colcode, "palette"),
-         cex = 0.8,
-         bty = "n")
-}
 
-pdf("/Users/jiayuanhao/Documents/Harvard/Rachel/data/map/diff_season.pdf")
+# pdf("/Users/jiayuanhao/Documents/Harvard/Rachel/data/map/diff_season.pdf")
+pdf("Plots/Seasonal_differences.pdf")
 par(mfrow=c(2,2),mai=c(1,1,0.5,0.5))
 for (s in c('Spring','Summer','Autumn','Winter')){
-  merged<- inner_join(as.data.frame(Countymap), df_plot[which(df_plot$season==s),], by = c("State_FIPS", "County_FIPS"))
+  merged<- inner_join(as.data.frame(Countymap), df_plot[which(df_plot$season==s),], 
+                      by = c("State_FIPS", "County_FIPS"))
   Merged<- merged[,c("State_FIPS", "County_FIPS", "SHP_Index", "diff")]
   Name<-s
-  my_map.fn2(Countymap, Merged, nclr, plotclr, Name)
+  my_map.fn1(Countymap, Merged, nclr, brewer_pal(palette = "PRGn")(nclr), Name, 
+             breaks = c(-5,-3,-2,-1,0,1,2,3,5,16), plotvar = "diff")
 }
 
 dev.off()
@@ -165,11 +161,13 @@ reid_overall<-aggregate(PM2.5~State_FIPS+ County_FIPS , data=reid_county, FUN=me
 di_overall<-aggregate(PM2.5~State_FIPS+ County_FIPS , data=di_county, FUN=mean)
 diff_overall<-aggregate(diff~State_FIPS+ County_FIPS , data=df_plot, FUN=mean)
 
-pdf("/Users/jiayuanhao/Documents/Harvard/Rachel/data/map/overall1.pdf")
+# pdf("/Users/jiayuanhao/Documents/Harvard/Rachel/data/map/overall1.pdf")
+pdf("Plots/Overall.pdf")
 par(mfrow=c(2,2),mai=c(1,1,0.5,0.5))
 #Reid overall
-nclr<- 8
-plotclr<- brewer.pal(nclr, "YlOrRd")
+nclr<- 9
+plotclr<- brewer_pal(palette = "RdYlBu", direction = -1)(nclr)
+# plotclr<- brewer.pal(nclr, "Reds")
 merged<- inner_join(as.data.frame(Countymap), reid_overall, by = c("State_FIPS", "County_FIPS"))
 Merged<- merged[,c("State_FIPS", "County_FIPS", "SHP_Index", "PM2.5")]
 Merged$PM2.5[which(Merged$PM2.5 < 0)]<- 0
@@ -183,11 +181,12 @@ Name<-'Di Overall'
 my_map.fn1(Countymap, Merged, nclr, plotclr, Name)
 #Diff overall
 nclr<- 9
-plotclr<- brewer_pal(palette = "RdYlBu", direction = -1)(nclr)
+# plotclr<- brewer_pal(palette = "RdYlBu", direction = -1)(nclr)
+plotclr<- brewer_pal(palette = "PRGn")(nclr)
 merged<- inner_join(as.data.frame(Countymap), diff_overall, by = c("State_FIPS", "County_FIPS"))
 Merged<- merged[,c("State_FIPS", "County_FIPS", "SHP_Index", "diff")]
-Name<-'Difference Overall'
-my_map.fn2(Countymap, Merged, nclr, plotclr, Name)
+Name<-'Difference (Reid-Di) Overall'
+my_map.fn1(Countymap, Merged, nclr, plotclr, Name, plotvar="diff", 
+           breaks = c(-3, -2, -1, 0, 1, 2, 3, 4, 5, 6)) 
 dev.off()
 ```
-
