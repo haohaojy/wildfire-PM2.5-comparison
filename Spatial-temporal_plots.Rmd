@@ -17,7 +17,8 @@ library(stringr)
 
 CBF<- palette.colors()
 
-WS<- readRDS("ST_WS.rds")
+WS<- readRDS("Revisions_ST_WS.rds")
+# WS<- readRDS("Revisions_ST_WS_unweighted.rds")
 # data<- readRDS("Spatio-temporal_results.rds")
 # #OR:
 # data<- readRDS("Spatio-temporal_results_No-missing.rds")
@@ -51,10 +52,10 @@ WS$alpha<- my_alph(WS$number)
 
 ```{r}
 
-## One plot for warm season:
+## Make plots
 
 Metrics<- c( "Normalized Mean Bias", "Median Ratio",
-             "RMSD", "R^2",
+             "RMSD", "Correlation Coefficient",
              "Spatial Correlation Coefficient",
             "Temporal Correlation Coefficient")
 # Metrics<- c("RMSD", "R^2",
@@ -80,6 +81,8 @@ ST_barplot<- function(df, X, metric){
     yscale<- scale_y_sqrt()
   }else if(metric %in% c("Normalized Mean Bias")){
     units<- as.expression(bquote(~PM[2.5] ~ "(" * mu * "g/"*m^3*")"))
+    del_pos<- which(subset$Group == "Di vs Reid") 
+    subset<- subset[-del_pos,]
   }
   
   p<- ggplot(subset, aes(x=Level, y=value, fill=Group)) + 
@@ -112,7 +115,7 @@ apply_ST_barplot<- function(df, X){
     my_list[[m]]<- ST_barplot(df, X, Metrics[m]) + theme(legend.position="none")
   }
   
-  my_legend<- get_legend(ST_barplot(df, X, Metrics[1]) +
+  my_legend<- get_legend(ST_barplot(df, X, Metrics[2]) +
                           theme(legend.position = "bottom",
                                  legend.key.width = unit(2, "line"),
                                  legend.spacing.y = unit(0.1, "cm")))
@@ -134,7 +137,8 @@ WS$Season<- factor(WS$Season, levels = c("Warm", "Cold"))
 WS_plots<- apply_ST_barplot(WS, "Season")
 
 
-png("Plots/ST_WS_points_No-missing.png", width=900, height=800)
+png("Plots/ST_WS_points_Revisions.png", width=900, height=800)
+# png("Plots/ST_WS_points_Revisions_unweighted.png", width=900, height=800)
 
 plot_grid(plot_grid(plotlist=WS_plots[[1]], nrow = 3), 
           WS_plots[[2]], nrow=2, rel_heights = c(30,1))
@@ -144,121 +148,4 @@ dev.off()
 
 ```
 
-```{r}
 
-## One plot for year, state, and season: use functions from cell below
-
-Metrics<- c("RMSD", "R^2")
-M<- length(Metrics)
-
-year_plots<- apply_ST_plot(Year, "Year")
-state_plots<- apply_ST_plot(State, "State")
-season_plots<- apply_ST_plot(Season, "Season")
-
-png("Plots/ST_condensed.png", width=900, height=800)
-
-plot_grid(plot_grid(plotlist=c(season_plots[[1]], year_plots[[1]], state_plots[[1]]), 
-                    nrow = 3), 
-          year_plots[[2]], nrow=2, rel_heights = c(30,1))
-
-dev.off()
-
-```
-
-```{r}
-
-Metrics<- c("RMSD", "R^2",
-            "Spatial RMSD", "Spatial Correlation Coefficient",
-            "Temporal RMSD",
-            "Temporal Correlation Coefficient")
-M<- length(Metrics)
-
-## Plotting function:
-
-ST_plot<- function(df, X, metric){
-  subset<- df[which(df$metrics == metric),]
-  subset$Var<- factor(subset$Var)
-  
-  if(metric == "R^2"){
-    metric<- as.expression(bquote(~R^2))
-  }
-  
-  units<- ""
-  yscale<- NULL
-  if(metric %in% c("Spatial RMSD", "Temporal RMSD", "RMSD")){
-    units<- as.expression(bquote(~PM[2.5] ~ "(" * mu * "g/"*m^3*")"))
-    yscale<- scale_y_sqrt()
-  }
-  
-  if(sum(subset$alpha != 1) > 0){
-    p<- ggplot(subset, aes(x=Var, y=value, color=Group, shape = Level)) + 
-    geom_point(position=position_jitter(w = 0.3, h = 0), aes(alpha=alpha), size = 5) +
-    scale_alpha_identity()
-  }else{
-    p<- ggplot(subset, aes(x=Var, y=value, color=Group, shape = Level)) + 
-    geom_point(position=position_jitter(w = 0.3, h = 0), size = 5) 
-  }
-  
-  return(p + ggtitle(metric) + xlab(X) + ylab(units) + yscale +
-    scale_color_manual(values=c(as.vector(CBF[6]), as.vector(CBF[2]), as.vector(CBF[7]))) +
-    theme(axis.text.x = element_text(angle = 0, vjust = 0.5)) +
-           theme(text = element_text(size = 16), legend.text=element_text(size=16),
-                   legend.title = element_text(face="bold"))  +
-           guides(colour = guide_legend(override.aes = list(size=5))))
-  
-}
-
-
-########## Apply to create my plots:
-
-apply_ST_plot<- function(df, X){
-  my_list<- vector(mode = "list", length = M)
-  for(m in 1:M){
-    my_list[[m]]<- ST_plot(df, X, Metrics[m]) + theme(legend.position="none")
-  }
-  
-  my_legend<- get_legend(ST_plot(df, X, Metrics[1]) +
-                          theme(legend.position = "bottom",
-                                 legend.key.width = unit(2, "line"),
-                                 legend.spacing.y = unit(0.1, "cm")))
-  
-  return(list(my_list, my_legend))
-}
-
-## Year:
-
-year_plots<- apply_ST_plot(Year, "Year")
-
-
-png("Plots/ST_year_points.png", width=900, height=800)
-
-plot_grid(plot_grid(plotlist=year_plots[[1]], nrow = 3), 
-          year_plots[[2]], nrow=2, rel_heights = c(30,1))
-
-dev.off()
-
-## State:
-
-state_plots<- apply_ST_plot(State, "State")
-
-
-png("Plots/ST_state_points.png", width=900, height=800)
-
-plot_grid(plot_grid(plotlist=state_plots[[1]], nrow = 3), 
-          state_plots[[2]], nrow=2, rel_heights = c(30,1))
-
-dev.off()
-
-## Season:
-
-season_plots<- apply_ST_plot(Season, "Season")
-
-
-png("Plots/ST_season_points.png", width=900, height=800)
-
-plot_grid(plot_grid(plotlist=season_plots[[1]], nrow = 3), 
-          season_plots[[2]], nrow=2, rel_heights = c(30,1))
-
-dev.off()
-
-```
