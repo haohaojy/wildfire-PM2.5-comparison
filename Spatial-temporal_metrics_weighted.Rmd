@@ -1,0 +1,249 @@
+---
+title: "Spatial-temporal metrics weighted by PD"
+author: "Ellen Considine"
+date: "2022-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(Metrics)
+library(MetricsWeighted)
+
+## Spatial-temporal metrics function:
+
+Groups<- c("Reid vs Monitor", "Di vs Monitor", "Di vs Reid")
+levels<- c(0, 12.1, 35.5)
+Levels<- c("Overall", "Medium", "High")
+Metrics<- c( "Normalized Mean Bias", "Median Ratio",
+             "RMSD", "Correlation Coefficient",
+             "Spatial Correlation Coefficient",
+            "Temporal Correlation Coefficient")
+# Metrics<- c("RMSD", "R^2",
+#             "Spatial RMSD", "Spatial Correlation Coefficient",
+#             "Temporal RMSD",
+#             "Temporal Correlation Coefficient")
+
+ST<- function(data, var, l, group){
+  
+  L<- levels[l]
+  
+  subdata<- data[which(data$PM2.5 >= L),]
+  subdata$var<- subdata[,var]
+  
+  subsets<- sort(unique(subdata$var))
+  
+  if(group == 1){
+    subdata$pm1<- subdata[,"PM2.5"]
+    subdata$pm2<- subdata[,"PM_Reid"]
+  }else if (group == 2){
+    subdata$pm1<- subdata[,"PM2.5"]
+    subdata$pm2<- subdata[,"PM_Di"]
+  }else{
+    subdata$pm1<- subdata[,"PM_Reid"]
+    subdata$pm2<- subdata[,"PM_Di"]
+  }
+  
+  ## Normalized Mean Bias
+  
+  nmb<- sapply(subsets, function(s){
+    df<- subdata[which(subdata$var == s & !is.na(subdata$pm1) & !is.na(subdata$pm2)),]
+    return(c(number = dim(df)[1], value = 
+               weighted.mean(df$pm2 - df$pm1, df$Pop_density, na.rm=TRUE) /
+               weighted.mean(df$pm1, df$Pop_density, na.rm=TRUE)))
+  })
+  
+  ## Median Ratio
+  
+  mr<- sapply(subsets, function(s){
+    df<- subdata[which(subdata$var == s & !is.na(subdata$pm1) & !is.na(subdata$pm2) & subdata$pm1 != 0),]
+    return(c(number = dim(df)[1], value = weighted_quantile(df$pm2 / df$pm1,
+                                        df$Pop_density, probs=0.5, na.rm=TRUE)))
+  })
+  
+  ## RMSD
+  rmsd<- sapply(subsets, function(s){
+    df<- subdata[which(subdata$var == s & !is.na(subdata$pm1) & !is.na(subdata$pm2)),]
+    return(c(number = dim(df)[1], value = 
+               sqrt(weighted.mean((df$pm1 - df$pm2)^2, df$Pop_density, na.rm=TRUE))))
+  })
+  
+  ## R^2
+  
+  Corr<- sapply(subsets, function(s){
+    df<- subdata[which(subdata$var == s & !is.na(subdata$pm1) & !is.na(subdata$pm2)),]
+    return(c(number = dim(df)[1], value = weighted_cor(df$pm1, df$pm2, 
+                                                       df$Pop_density, na.rm=TRUE)))
+  })
+  
+  # Spatial aggregation:
+  
+  spatial<- aggregate(data=subdata, cbind(pm1, pm2) ~ GEOID + var, FUN = mean)
+  
+  # ## Spatial RMSD
+  # 
+  # spatial_rmsd<- sapply(subsets, function(s){
+  #   df<- spatial[which(spatial$var == s & !is.na(spatial$pm1) & !is.na(spatial$pm2)),]
+  #   return(c(number = dim(df)[1], value = rmse(df$pm1, df$pm2)))
+  # })
+  
+  ## Spatial Correlation
+  
+  spatial_r<- sapply(subsets, function(s){
+    df<- spatial[which(spatial$var == s & !is.na(spatial$pm1) & !is.na(spatial$pm2)),]
+    return(c(number = dim(df)[1], value = weighted_cor(df$pm1, df$pm2, 
+                                                       df$Pop_density, na.rm=TRUE)))
+  })
+  
+  # Temporal aggregation:
+  
+  temporal<- aggregate(data=subdata, cbind(pm1, pm2) ~ date + var, FUN = mean)
+  
+  # ## Temporal RMSD
+  # 
+  # temporal_rmsd<- sapply(subsets, function(s){
+  #   df<- temporal[which(temporal$var == s & !is.na(temporal$pm1) & !is.na(temporal$pm2)),]
+  #   return(c(number = dim(df)[1], value = rmse(df$pm1, df$pm2)))
+  # })
+  
+  ## Temporal Correlation
+  
+  temporal_r<- sapply(subsets, function(s){
+    df<- temporal[which(temporal$var == s & !is.na(temporal$pm1) & !is.na(temporal$pm2)),]
+    return(c(number = dim(df)[1], value = weighted_cor(df$pm1, df$pm2,
+                                              df$Pop_density, na.rm=TRUE)))
+  })
+  
+  
+  results<- data.frame(Var = rep(subsets, length(Metrics)),
+                       Group = Groups[group], Level = Levels[l],
+                      metrics = rep(Metrics, each = length(subsets)),
+                       t(cbind(nmb, mr,
+                               rmsd, Corr, 
+                               spatial_r, temporal_r)))
+  # results<- data.frame(Var = rep(subsets, length(Metrics)),
+  #                      Group = Groups[group], Level = Levels[l],
+  #                     metrics = rep(Metrics, each = length(subsets)),
+  #                      t(cbind(rmsd, r2, spatial_rmsd, spatial_r, 
+  #                              temporal_rmsd, temporal_r)))
+  
+  return(results)
+}
+
+
+## Apply the ST metrics function:
+
+apply_ST<- function(data, var){
+  Results<- data.frame(Var = "", Group = "", Level = "", 
+                       metrics = "", number = 0, value = 0)
+  for(l in 1:3){
+    for(g in 1:3){
+      Results<- rbind(Results, ST(data, var, l, g))
+    }
+  }
+  return(Results[-1,])
+}
+
+valid<- readRDS("Revisions_Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
+
+# Year<- apply_ST(valid, "year")
+# State<- apply_ST(valid, "stateCode")
+# Season<- apply_ST(valid, "season")
+
+# saveRDS(list(Year, State, Season, WS), "Spatio-temporal_results.rds")
+
+## When we don't include points where either dataset is missing:
+
+na<- which(is.na(valid$PM_Di)|is.na(valid$PM_Reid))
+valid<- valid[-na,]
+
+WS<- apply_ST(valid, "Warm_season")
+
+saveRDS(WS, "Revisions_ST_WS.rds")
+
+# Year<- apply_ST(valid, "year")
+# State<- apply_ST(valid, "stateCode")
+# Season<- apply_ST(valid, "season")
+# WS<- apply_ST(valid, "Warm_season")
+
+# saveRDS(list(Year, State, Season, WS), "Spatio-temporal_results_No-missing.rds")
+
+```
+
+```{r}
+
+## Investigating how many of the Di results are better than the Reid results:
+
+DvR<- function(data, m, tol){
+  r<- FALSE
+  if(m %in% c("RMSD", "Spatial RMSD", "Temporal RMSD")){
+    val<- (data[1, "value"] - data[2, "value"])/data[2, "value"]
+    if( !is.na(val) & val > tol){
+      r<- TRUE
+       }
+    return(r)
+  }else{
+    if(m != "R^2"){
+      data$value<- data$value^2
+    }
+    val<- (data[2, "value"] - data[1, "value"])/data[1, "value"]
+    if( !is.na(val) & val > tol){
+      r<- TRUE
+       }
+    return(r)
+  }
+}
+
+DvR_apply<- function(df, tol){
+  subsets<- unique(df$Var)
+  
+  dvr<- rep(0,dim(df)[2])
+  
+  for(m in Metrics){
+    for(g in Levels){
+      for(s in subsets){
+        data<- df[which(df$Var == s & df$metrics == m & df$Level == g),]
+        b<- DvR(data, m, tol)
+        if(b){
+          dvr<- rbind(dvr, data[1:2,])
+        }
+      }
+    }
+  }
+
+  # (dim(dvr)[1] - 1)/dim(df)[1]
+  
+  return(dvr[-1,])
+}
+
+
+## Check using tolerance of 10% or 5%
+DvR_apply(Year, 0.1)
+DvR_apply(State, 0.1)
+DvR_apply(Season, 0.1)
+
+## Check overall percentages:
+nrow(DvR_apply(Year, 0)) # 64
+nrow(DvR_apply(State, 0)) # 46
+nrow(DvR_apply(Season, 0)) # 24
+nrow(DvR_apply(WS, 0)) 8
+
+nrow(DvR_apply(Year, -10000)) # 324
+nrow(DvR_apply(State, -10000)) # 354
+nrow(DvR_apply(Season, -10000)) # 144
+nrow(DvR_apply(WS, -10000)) # 72
+
+64/324 # 0.198
+46/354 # 0.130
+24/144 # 0.167
+8/72 # 0.111
+
+(64 + 46 + 24 + 8) / (324 + 354 + 144 + 72) # 0.159
+
+```
+
+
+
