@@ -19,7 +19,7 @@ Groups<- c("Reid vs Monitor", "Di vs Monitor", "Di vs Reid")
 levels<- c(0, 12.1, 35.5)
 Levels<- c("Overall", "Medium", "High")
 Metrics<- c( "Normalized Mean Bias", "Median Ratio",
-             "RMSD", "R^2",
+             "RMSD", "Correlation Coefficient",
              "Spatial Correlation Coefficient",
             "Temporal Correlation Coefficient")
 # Metrics<- c("RMSD", "R^2",
@@ -72,7 +72,7 @@ ST<- function(data, var, l, group){
   
   r2<- sapply(subsets, function(s){
     df<- subdata[which(subdata$var == s & !is.na(subdata$pm1) & !is.na(subdata$pm2)),]
-    return(c(number = dim(df)[1], value = cor(df$pm1, df$pm2)^2))
+    return(c(number = dim(df)[1], value = cor(df$pm1, df$pm2)))
   })
   
   # Spatial aggregation:
@@ -141,7 +141,7 @@ apply_ST<- function(data, var){
   return(Results[-1,])
 }
 
-valid<- readRDS("Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
+valid<- readRDS("Revisions_Merged_FINAL_monitor_Di_Reid_with_CMAQ.rds")
 
 # Year<- apply_ST(valid, "year")
 # State<- apply_ST(valid, "stateCode")
@@ -156,7 +156,7 @@ valid<- valid[-na,]
 
 WS<- apply_ST(valid, "Warm_season")
 
-saveRDS(WS, "ST_WS.rds")
+saveRDS(WS, "Revisions_ST_WS_unweighted.rds")
 
 # Year<- apply_ST(valid, "year")
 # State<- apply_ST(valid, "stateCode")
