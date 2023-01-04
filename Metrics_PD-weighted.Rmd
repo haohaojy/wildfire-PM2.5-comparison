@@ -120,7 +120,7 @@ print(xtable(X), sanitize.rownames.function=identity, hline.after = 1:nrow(X))
 ```{r}
 
 ## EPA comparison dataset:
-EPA<- readRDS("Merged_EPA_Di_Reid_with_CMAQ.rds")
+EPA<- readRDS("Revisions_Merged_EPA_Di_Reid_with_CMAQ.rds")
 EPA$diff_mo_ct<- EPA$PM2.5-EPA$PM_Reid
 EPA$diff_mo_po<- EPA$PM2.5-EPA$PM_Di
 
@@ -198,7 +198,7 @@ metrics_justReid<- function(mydata){
 ```{r}
 
 #### Investigating Reid estimates without CMAQ
-valid<- readRDS("Merged_monitor_Reid_without_CMAQ.rds")
+valid<- readRDS("Revisions_Merged_monitor_Reid_without_CMAQ.rds")
 
 ## Evaluating Reid estimates 2008-2016:
 
